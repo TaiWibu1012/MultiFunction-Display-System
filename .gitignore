@@ -1,0 +1,78 @@
+# ==============================================================================
+# Git Ignore Configuration: MultiFunction-Display-System (MFDS)
+# Embedded Linux & Qt 6 Target: Raspberry Pi 4 Model B (64-bit)
+# ==============================================================================
+
+# Prerequisites & Compiled Binaries
+*.o
+*.obj
+*.so
+*.a
+*.dylib
+*.out
+*.app
+
+# Linux Kernel Out-of-tree Module Build Artifacts
+*.ko
+*.mod
+*.mod.c
+*.mod.o
+*.cmd
+modules.order
+Module.symvers
+.tmp_versions/
+*.ko.cmd
+.cache.mk
+
+# CMake & Ninja Build Artifacts
+build/
+build-*/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.ninja
+.ninja_*
+compile_commands.json
+
+# Qt & QML Build Outputs
+*.qmlc
+*.jsc
+.rcc/
+.moc/
+.obj/
+.ui/
+
+# IDE & Editor Configurations
+*.user
+*.user.*
+*.autosave
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Yocto Large Flashable OS Images & Rootfs Archives
+*.wic
+*.wic.bz2
+*.wic.gz
+*.tar.bz2
+*.tar.gz
+*.tar.xz
+*.img
+*.iso
+poky-*-toolchain-*.sh
+
+# Explicitly keep lightweight metadata
+!*.wic.bmap
+
+# Yocto Build Cache & Temp Dirs
+downloads/
+sstate-cache/
+tmp/
+
+# Logs & Temporary Files
+*.log
+*.bak
+*.tmp

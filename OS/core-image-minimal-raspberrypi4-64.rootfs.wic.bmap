@@ -1,0 +1,67 @@
+<?xml version="1.0" ?>
+<!-- This file contains the block map for an image file, which is basically
+     a list of useful (mapped) block numbers in the image file. In other words,
+     it lists only those blocks which contain data (boot sector, partition
+     table, file-system metadata, files, directories, extents, etc). These
+     blocks have to be copied to the target device. The other blocks do not
+     contain any useful data and do not have to be copied to the target
+     device.
+
+     The block map is an optimization which allows to copy or flash the image
+     to the image quicker than copying of flashing the entire image. This is
+     because with bmap less data is copied: <MappedBlocksCount> blocks instead
+     of <BlocksCount> blocks.
+
+     Besides the machine-readable data, this file contains useful commentaries
+     which contain human-readable information like image size, percentage of
+     mapped data, etc.
+
+     The 'version' attribute is the block map file format version in the
+     'major.minor' format. The version major number is increased whenever an
+     incompatible block map format change is made. The minor number changes
+     in case of minor backward-compatible changes. -->
+
+<bmap version="2.0">
+    <!-- Image size in bytes: 598.8 MiB -->
+    <ImageSize> 627887104 </ImageSize>
+
+    <!-- Size of a block in bytes -->
+    <BlockSize> 4096 </BlockSize>
+
+    <!-- Count of blocks in the image file -->
+    <BlocksCount> 153293 </BlocksCount>
+
+    <!-- Count of mapped blocks: 297.2 MiB or 49.6%    -->
+    <MappedBlocksCount> 76094  </MappedBlocksCount>
+
+    <!-- Type of checksum used in this file -->
+    <ChecksumType> sha256 </ChecksumType>
+
+    <!-- The checksum of this bmap file. When it is calculated, the value of
+         the checksum has to be zero (all ASCII "0" symbols).  -->
+    <BmapFileChecksum> 8481bfae784a26851c77daf114dd32b943d7009f2875014c4a5b577e157027d5 </BmapFileChecksum>
+
+    <!-- The block map which consists of elements which may either be a
+         range of blocks or a single block. The 'chksum' attribute
+         (if present) is the checksum of this blocks range. -->
+    <BlockMap>
+        <Range chksum="29f262fb5b0d3c3fd1754cdbf33141e63ecd55b364fe51764e21750a94b0655c"> 0-2 </Range>
+        <Range chksum="f6cd5d97a9081d27817b296ab1736851e70b81f4d3568bac78f9be32159854cb"> 1024-13346 </Range>
+        <Range chksum="597b757fa78b8ce7139f5d03cd4178ce2018cffe7120810684e5ef315cf76b81"> 34816-34887 </Range>
+        <Range chksum="301b8f77b7e2406903de267ff328ae94c47a4ad5a470660c49a4e0312f0d9f44"> 34889-35348 </Range>
+        <Range chksum="4d1fe65c5d6da6e224c9f8db9f22cbe9513b5a639370cfa15ddfab12057cd0d7"> 35913-36865 </Range>
+        <Range chksum="adde711a22f26750f76bb95e5cbea43fc8fc64f2f9f63fec0754b0fddf6dfed3"> 36929-40961 </Range>
+        <Range chksum="835203471631df55b1a8afb21638c25f7ab8883359fc8f5e6b73ee74db104ccd"> 41025-45057 </Range>
+        <Range chksum="81e0907f258a03fd7c041cb1092747d4ff90a1fa7730f1ed7f2ef0ce44cc9227"> 45121-49153 </Range>
+        <Range chksum="60d12bbb6c8f0ed270cfd9980efef99a83225833897cc5eb4f19a349a62f03bd"> 49217-53249 </Range>
+        <Range chksum="31b0f0f902376710edc04625e846ed0180df13c2e091e3e2d90b1011da30e6e8"> 53313-67588 </Range>
+        <Range chksum="d4ce9dc2a66c41673ba8f8e7e5077b67fa707c64bda0e8eafcf7f8683ec1c5f5"> 68616-86017 </Range>
+        <Range chksum="a49187b804d15810489d5a04f7794b651bfb3a6169130a2c899b6dd8e0dea19c"> 86081-90113 </Range>
+        <Range chksum="e636600e8bd5605e16c473f263be7f6919e18044e7df47fee71ec8db2a20f60e"> 90177-100352 </Range>
+        <Range chksum="4c49f82976b3156e4cab4e0208457f9395172e816e5c7633e33902e641e3a06c"> 101384-101614 </Range>
+        <Range chksum="85591c5ecafad7191508caddc080d0307bce97f3b86894a321ede36595719c6c"> 133120 </Range>
+        <Range chksum="02323d21094a5844b628ad129511ad16c18d53d96381ef30a056e2ebfcf1c7df"> 133122 </Range>
+        <Range chksum="6237dc28420079b9c92ed0ce1a6e0ac864d832501683038ec34fca5bbe172f28"> 135168-135169 </Range>
+        <Range chksum="08cef63f562990b6dc58756e502678e1855a0fe5be5c636d7fe762892421c0fe"> 153264-153292 </Range>
+    </BlockMap>
+</bmap>
