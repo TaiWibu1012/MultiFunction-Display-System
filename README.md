@@ -60,7 +60,7 @@ Unlike traditional desktop distributions running heavy display servers (X11 / Wa
 | :--- | :--- | :--- |
 | **SoC** | Broadcom BCM2711 | Quad-Core Cortex-A72 (ARMv8-A) 64-bit @ 1.8 GHz |
 | **GPU** | Broadcom VideoCore VI | OpenGL ES 3.1 / Vulkan 1.2 support via Mesa `vc4-kms-v3d` |
-| **RAM** | 4 GB / | High-throughput system memory |
+| **RAM** | 4 GB | High-throughput system memory |
 | **Display Output** | Micro-HDMI 0 (`HDMI-A-1`) | Native 1080p / 4K 60Hz HDMI video stream |
 | **Network** | Gigabit Ethernet / 802.11ac Wi-Fi | REST API data synchronization, remote management |
 | **Debug Console** | UART Serial (GPIO 14 TX, GPIO 15 RX) | 115200 baud, 8N1 serial kernel debugging |
