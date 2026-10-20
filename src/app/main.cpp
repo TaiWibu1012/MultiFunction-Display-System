@@ -1,25 +1,33 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-#include <QCursor> // Dùng để ẩn chuột
+#include <QQmlContext>
+#include <QCursor>
+#include "DataManager.hpp"
 
 int main(int argc, char *argv[])
 {
+    // Mặc định xuất thẳng KMS/DRM (HDMI) nếu không truyền platform khác (như VNC)
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
+        qputenv("QT_QPA_PLATFORM", "eglfs");
+    }
+
     QGuiApplication app(argc, argv);
 
-    // Ẩn con trỏ chuột hoàn toàn cho Kiosk Mode
+    // Ẩn con trỏ chuột cho Kiosk Mode
     app.setOverrideCursor(QCursor(Qt::BlankCursor));
 
     QQmlApplicationEngine engine;
-    
-    // Nạp giao diện gốc
-    const QUrl url(u"qrc:/Main.qml"_qs);
-    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
-        &app, [url](QObject *obj, const QUrl &objUrl) {
-            if (!obj && url == objUrl)
-                QCoreApplication::exit(-1);
-        }, Qt::QueuedConnection);
-        
-    engine.load(url);
+
+    // Khởi tạo DataManager và expose sang QML dưới tên "dataManager"
+    DataManager dataManager;
+    engine.rootContext()->setContextProperty("dataManager", &dataManager);
+
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
+        &app, []() { QCoreApplication::exit(-1); },
+        Qt::QueuedConnection);
+
+    // Nạp module QML chính
+    engine.loadFromModule("MultiFunctionDisplay", "Main");
 
     return app.exec();
 }
