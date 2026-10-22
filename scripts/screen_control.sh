@@ -20,6 +20,9 @@ set_dpms_kms() {
 case "$ACTION" in
     on)
         echo "[ScreenControl] Turning HDMI Display ON..."
+        if [ -f "/sys/devices/platform/mfds_ctrl/screen_power" ]; then
+            echo 1 > "/sys/devices/platform/mfds_ctrl/screen_power" 2>/dev/null || true
+        fi
         if command -v vcgencmd >/dev/null 2>&1; then
             vcgencmd display_power 1
         elif ! set_dpms_kms 0; then
@@ -29,6 +32,9 @@ case "$ACTION" in
         ;;
     off)
         echo "[ScreenControl] Turning HDMI Display OFF (Standby)..."
+        if [ -f "/sys/devices/platform/mfds_ctrl/screen_power" ]; then
+            echo 0 > "/sys/devices/platform/mfds_ctrl/screen_power" 2>/dev/null || true
+        fi
         if command -v vcgencmd >/dev/null 2>&1; then
             vcgencmd display_power 0
         elif ! set_dpms_kms 3; then
@@ -37,6 +43,10 @@ case "$ACTION" in
         fi
         ;;
     status)
+        if [ -f "/sys/devices/platform/mfds_ctrl/screen_power" ]; then
+            echo -n "MFDS Hardware Power: "
+            cat "/sys/devices/platform/mfds_ctrl/screen_power"
+        fi
         if command -v vcgencmd >/dev/null 2>&1; then
             vcgencmd display_power
         elif [ -f "$DRM_DPMS" ]; then

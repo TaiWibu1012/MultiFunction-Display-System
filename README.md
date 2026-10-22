@@ -126,13 +126,37 @@ qt-cmake -B build -S . -G Ninja
 cmake --build build
 ```
 
-### 6.3. Building the Out-of-Tree Kernel Driver
-Ensure `kernel-devsrc` is populated within the target sysroot:
+### 6.3. Building the Out-of-Tree Kernel Driver & Device Tree Overlay
+The driver and Device Tree overlay can be compiled using the unified build script:
 
 ```bash
-cd src/driver
-make ARCH=arm64 CROSS_COMPILE=aarch64-poky-linux- KDIR=/opt/poky/5.0.19-pi4-64/sysroots/cortexa72-poky-linux/usr/src/kernel
+./scripts/build_driver.sh
 ```
+
+Or manually via Make:
+```bash
+cd src/driver
+make ARCH=arm64 CROSS_COMPILE=aarch64-poky-linux-
+```
+
+This generates:
+- `src/driver/mfds_ctrl.ko`: Kernel platform driver matching `compatible = "mfds,kiosk-ctrl"`.
+- `devicetree/mfds-kiosk-overlay.dtbo`: Compiled Device Tree Overlay for GPIO 17 (button) and GPIO 27 (LED).
+
+### 6.4. Hardware Pinout & Sysfs Interface
+
+| GPIO Pin | Physical Pin | Function | Logic Level / Description |
+| :--- | :--- | :--- | :--- |
+| **GPIO 17** | Pin 11 | Kiosk Display Toggle Button | Active Low (Internal Pull-Up), Threaded IRQ with 250ms debouncing |
+| **GPIO 27** | Pin 13 | Kiosk Operational Status LED | Active High, synchronized with display power state |
+
+The platform driver exposes the following attributes under `/sys/devices/platform/mfds_ctrl/`:
+* `screen_power` (RW): `1` (Display active) / `0` (Standby / DPMS sleep). Supports real-time `sysfs_notify`.
+* `button_count` (RO): Total registered physical kiosk push button triggers.
+* `led_state` (RW): Direct hardware control of the operational status LED.
+* `temp_mc` (RO): SoC BCM2711 temperature in millidegrees Celsius.
+* `temp_c` (RO): Formatted core temperature (e.g., `45.2 C`).
+* `heartbeat` (WO): Userspace keepalive ping for kiosk health monitoring.
 
 ---
 
