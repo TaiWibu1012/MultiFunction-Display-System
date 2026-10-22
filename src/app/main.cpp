@@ -3,6 +3,7 @@
 #include <QQmlContext>
 #include <QCursor>
 #include "DataManager.hpp"
+#include "WatchdogSupervisor.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -15,6 +16,9 @@ int main(int argc, char *argv[])
 
     // Ẩn con trỏ chuột cho Kiosk Mode
     app.setOverrideCursor(QCursor(Qt::BlankCursor));
+
+    // Khởi tạo Hardware Watchdog Supervisor (15s timeout, ping mỗi 5s)
+    WatchdogSupervisor watchdog(15, 5);
 
     QQmlApplicationEngine engine;
 

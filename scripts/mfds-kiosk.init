@@ -1,0 +1,90 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          mfds-kiosk
+# Required-Start:    $network $local_fs
+# Required-Stop:     $network $local_fs
+# Default-Start:     5
+# Default-Stop:      0 1 6
+# Short-Description: Multi-Function Display System Kiosk Dashboard
+### END INIT INFO
+
+DAEMON="/home/root/mfds/appMultiFunctionDisplay"
+DAEMON_DIR="/home/root/mfds"
+PIDFILE="/var/run/mfds-kiosk.pid"
+LOGFILE="/var/log/mfds-kiosk.log"
+
+# Default to native HDMI KMS/DRM
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-eglfs}"
+
+ensure_data_dir() {
+    mkdir -p /var/lib/mfds
+    if [ ! -f /var/lib/mfds/data.json ] && [ -f "$DAEMON_DIR/data_sample.json" ]; then
+        cp "$DAEMON_DIR/data_sample.json" /var/lib/mfds/data.json
+    fi
+}
+
+start() {
+    echo "Starting Multi-Function Display System Kiosk..."
+    if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+        echo "MFDS Kiosk is already running."
+        return 0
+    fi
+
+    if [ ! -x "$DAEMON" ]; then
+        echo "Error: Binary $DAEMON not found or not executable."
+        return 1
+    fi
+
+    ensure_data_dir
+
+    cd "$DAEMON_DIR"
+    nohup "$DAEMON" >> "$LOGFILE" 2>&1 &
+    echo $! > "$PIDFILE"
+    echo "MFDS Kiosk started (PID: $(cat "$PIDFILE"))."
+}
+
+stop() {
+    echo "Stopping Multi-Function Display System Kiosk..."
+    if [ -f "$PIDFILE" ]; then
+        PID=$(cat "$PIDFILE")
+        kill "$PID" 2>/dev/null || true
+        sleep 1
+        killall -9 appMultiFunctionDisplay 2>/dev/null || true
+        rm -f "$PIDFILE"
+        echo "MFDS Kiosk stopped."
+    else
+        killall -9 appMultiFunctionDisplay 2>/dev/null || true
+        echo "MFDS Kiosk was not running."
+    fi
+}
+
+status() {
+    if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+        echo "MFDS Kiosk is running (PID: $(cat "$PIDFILE"))."
+    else
+        echo "MFDS Kiosk is stopped."
+    fi
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        stop
+        sleep 1
+        start
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit 0

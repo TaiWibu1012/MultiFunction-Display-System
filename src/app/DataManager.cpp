@@ -6,7 +6,7 @@
 DataManager::DataManager(QObject *parent)
     : QObject(parent)
     , m_deviceName("MFDS-Display-Box")
-    , m_location("Văn Phòng Bộ Môn KTMT")
+    , m_location("Văn Phòng Khoa KTMT")
     , m_bannerTitle("BẢNG TIN ĐIỆN TỬ THÔNG MINH")
 {
     // Search order for data storage path

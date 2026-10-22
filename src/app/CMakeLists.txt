@@ -13,6 +13,8 @@ qt_add_executable(appMultiFunctionDisplay
     main.cpp
     DataManager.hpp
     DataManager.cpp
+    WatchdogSupervisor.hpp
+    WatchdogSupervisor.cpp
 )
 
 qt_add_qml_module(appMultiFunctionDisplay

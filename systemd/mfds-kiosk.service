@@ -1,0 +1,19 @@
+[Unit]
+Description=Multi-Function Display System (MFDS) Kiosk Dashboard
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/root/mfds
+Environment="QT_QPA_PLATFORM=eglfs"
+Environment="QT_QPA_EGLFS_NO_LIBINPUT=0"
+ExecStart=/home/root/mfds/appMultiFunctionDisplay
+Restart=always
+RestartSec=2
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
