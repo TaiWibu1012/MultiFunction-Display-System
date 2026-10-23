@@ -9,6 +9,9 @@ WatchdogSupervisor::WatchdogSupervisor(int timeoutSec, int pingIntervalSec, QObj
     : QObject(parent)
     , m_fd(-1)
     , m_enabled(false)
+    , m_renderHeartbeat(true)
+    , m_dataHeartbeat(true)
+    , m_missedHeartbeatCycles(0)
 {
     openDevice(timeoutSec);
 
@@ -40,7 +43,20 @@ void WatchdogSupervisor::openDevice(int timeoutSec)
     }
 
     m_enabled = true;
+    m_renderHeartbeat = true;
+    m_dataHeartbeat = true;
+    m_missedHeartbeatCycles = 0;
     ping(); // Immediate initial keepalive
+}
+
+void WatchdogSupervisor::feedDataHeartbeat()
+{
+    m_dataHeartbeat = true;
+}
+
+void WatchdogSupervisor::feedRenderHeartbeat()
+{
+    m_renderHeartbeat = true;
 }
 
 void WatchdogSupervisor::ping()
@@ -49,9 +65,27 @@ void WatchdogSupervisor::ping()
         return;
     }
 
-    // Ping using ioctl keepalive or write
+    // Health Check Gate: Both render loop and data reader must report healthy
+    if (!m_renderHeartbeat || !m_dataHeartbeat) {
+        m_missedHeartbeatCycles++;
+        qWarning() << "[WatchdogSupervisor] Subsystem health check missing cycle!"
+                   << "Misses:" << m_missedHeartbeatCycles << "/" << MAX_ALLOWED_MISSED_CYCLES
+                   << "(Render:" << m_renderHeartbeat << "Data:" << m_dataHeartbeat << ")";
+
+        if (m_missedHeartbeatCycles >= MAX_ALLOWED_MISSED_CYCLES) {
+            qCritical() << "[WatchdogSupervisor] SUBSYSTEM STALLED! Halting watchdog keepalive to trigger hardware reboot.";
+            return; // Cease keepalive -> hardware watchdog will reset BCM2711
+        }
+    } else {
+        m_missedHeartbeatCycles = 0;
+    }
+
+    // Reset heartbeats for next monitoring cycle
+    m_renderHeartbeat = false;
+    m_dataHeartbeat = false;
+
+    // Ping using ioctl keepalive or byte write fallback
     if (ioctl(m_fd, WDIOC_KEEPALIVE, 0) < 0) {
-        // Fallback to byte write
         static const char dummy = '\0';
         if (::write(m_fd, &dummy, 1) < 0) {
             qWarning() << "[WatchdogSupervisor] Failed to write keep-alive ping to /dev/watchdog.";

@@ -5,6 +5,7 @@
 
 DataManager::DataManager(QObject *parent)
     : QObject(parent)
+    , m_hasValidData(false)
     , m_deviceName("MFDS-Display-Box")
     , m_location("Văn Phòng Khoa KTMT")
     , m_bannerTitle("BẢNG TIN ĐIỆN TỬ THÔNG MINH")
@@ -18,48 +19,88 @@ DataManager::DataManager(QObject *parent)
     } else {
         m_dataFilePath = localPath;
     }
+    m_parentDirPath = QFileInfo(m_dataFilePath).absolutePath();
 
-    // Monitor file changes using inotify-backed QFileSystemWatcher
+    // Setup debounce timer (150ms) to coalesce rapid inotify events and partial writes
+    m_debounceTimer.setSingleShot(true);
+    m_debounceTimer.setInterval(150);
+    connect(&m_debounceTimer, &QTimer::timeout, this, &DataManager::reload);
+
+    setupWatchers();
+
+    // Initial load
+    reload();
+}
+
+void DataManager::setupWatchers()
+{
+    // 1. Watch target file directly
     if (QFile::exists(m_dataFilePath)) {
+        if (!m_watcher.files().contains(m_dataFilePath)) {
+            m_watcher.addPath(m_dataFilePath);
+        }
+    }
+
+    // 2. Watch parent directory to catch atomic rename/replace (IN_MOVED_TO/IN_CREATE)
+    if (QDir(m_parentDirPath).exists()) {
+        if (!m_watcher.directories().contains(m_parentDirPath)) {
+            m_watcher.addPath(m_parentDirPath);
+        }
+    }
+
+    connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, &DataManager::handleWatchedPathChanged);
+    connect(&m_watcher, &QFileSystemWatcher::directoryChanged, this, &DataManager::handleWatchedPathChanged);
+}
+
+void DataManager::handleWatchedPathChanged(const QString &path)
+{
+    qDebug() << "[DataManager] Detected IPC inotify event on:" << path;
+
+    // If file was replaced atomically (rename), re-add file to watcher
+    if (QFile::exists(m_dataFilePath) && !m_watcher.files().contains(m_dataFilePath)) {
         m_watcher.addPath(m_dataFilePath);
     }
 
-    connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, [this](const QString &path) {
-        qDebug() << "[DataManager] Detected IPC data change in:" << path;
-        // Re-add to watcher if file was replaced atomically (rename)
-        if (!m_watcher.files().contains(m_dataFilePath) && QFile::exists(m_dataFilePath)) {
-            m_watcher.addPath(m_dataFilePath);
-        }
-        reload();
-    });
-
-    reload();
+    // Restart debounce timer so file write can complete before parsing
+    m_debounceTimer.start();
 }
 
 void DataManager::reload()
 {
     QFile file(m_dataFilePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qWarning() << "[DataManager] Cannot open data file:" << m_dataFilePath << "- using defaults.";
-        loadDefaults();
+        qWarning() << "[DataManager] Cannot open data file:" << m_dataFilePath;
+        if (!m_hasValidData) {
+            qInfo() << "[DataManager] No previous data in memory. Loading default fallback.";
+            loadDefaults();
+        }
         return;
     }
 
     QByteArray rawData = file.readAll();
     file.close();
 
-    parseJsonData(rawData);
+    if (rawData.trimmed().isEmpty()) {
+        qWarning() << "[DataManager] Read empty payload (possible partial write). Preserving existing cache.";
+        return;
+    }
+
+    if (!parseJsonData(rawData)) {
+        qWarning() << "[DataManager] JSON parsing failed. Existing memory cache retained.";
+        if (!m_hasValidData) {
+            loadDefaults();
+        }
+    }
 }
 
-void DataManager::parseJsonData(const QByteArray &data)
+bool DataManager::parseJsonData(const QByteArray &data)
 {
     QJsonParseError parseError;
     QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
 
     if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
         qWarning() << "[DataManager] JSON parse error:" << parseError.errorString();
-        loadDefaults();
-        return;
+        return false;
     }
 
     QJsonObject root = doc.object();
@@ -108,7 +149,10 @@ void DataManager::parseJsonData(const QByteArray &data)
              << m_schedules.size() << "schedules,"
              << m_newsTicker.size() << "tickers.";
 
+    m_hasValidData = true;
     emit dataChanged();
+    emit dataReadSuccessful();
+    return true;
 }
 
 void DataManager::loadDefaults()

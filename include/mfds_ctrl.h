@@ -22,6 +22,7 @@
 #define MFDS_SYSFS_LED_STATE        MFDS_SYSFS_PATH "/led_state"
 #define MFDS_SYSFS_TEMP_MC          MFDS_SYSFS_PATH "/temp_mc"
 #define MFDS_SYSFS_TEMP_C           MFDS_SYSFS_PATH "/temp_c"
+#define MFDS_SYSFS_SOC_TEMP         MFDS_SYSFS_PATH "/soc_temp"
 #define MFDS_SYSFS_HEARTBEAT        MFDS_SYSFS_PATH "/heartbeat"
 
 #endif /* MFDS_CTRL_H */

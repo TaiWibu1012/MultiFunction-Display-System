@@ -32,6 +32,12 @@ target_link_libraries(appMultiFunctionDisplay PRIVATE
     Qt6::Qml
 )
 
+target_compile_options(appMultiFunctionDisplay PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+)
+
 include(GNUInstallDirs)
 install(TARGETS appMultiFunctionDisplay
     BUNDLE DESTINATION .

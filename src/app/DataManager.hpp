@@ -8,6 +8,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QFile>
+#include <QTimer>
 #include <QDebug>
 
 class DataManager : public QObject
@@ -30,19 +31,28 @@ public:
     QString deviceName() const { return m_deviceName; }
     QString location() const { return m_location; }
     QString bannerTitle() const { return m_bannerTitle; }
+    bool hasValidData() const { return m_hasValidData; }
 
 public slots:
     void reload();
 
 signals:
     void dataChanged();
+    void dataReadSuccessful();
+
+private slots:
+    void handleWatchedPathChanged(const QString &path);
 
 private:
     void loadDefaults();
-    void parseJsonData(const QByteArray &data);
+    bool parseJsonData(const QByteArray &data);
+    void setupWatchers();
 
     QString m_dataFilePath;
+    QString m_parentDirPath;
     QFileSystemWatcher m_watcher;
+    QTimer m_debounceTimer;
+    bool m_hasValidData;
 
     QVariantList m_notices;
     QVariantList m_schedules;

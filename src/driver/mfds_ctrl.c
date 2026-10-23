@@ -192,6 +192,7 @@ static ssize_t temp_c_show(struct device *dev, struct device_attribute *attr, ch
 {
     struct mfds_kiosk_dev *mdev = dev_get_drvdata(dev);
     int temp = 0;
+    int abs_temp;
     int ret;
 
     if (!mdev->tz_dev || IS_ERR(mdev->tz_dev))
@@ -201,9 +202,20 @@ static ssize_t temp_c_show(struct device *dev, struct device_attribute *attr, ch
     if (ret)
         return ret;
 
-    return sysfs_emit(buf, "%d.%d C\n", temp / 1000, (temp % 1000) / 100);
+    abs_temp = abs(temp);
+    return sysfs_emit(buf, "%s%d.%d C\n",
+                      temp < 0 ? "-" : "",
+                      abs_temp / 1000,
+                      (abs_temp % 1000) / 100);
 }
 static DEVICE_ATTR_RO(temp_c);
+
+/* Standardized SoC telemetry attribute per ipc-deploy-kiosk workflow */
+static ssize_t soc_temp_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    return temp_c_show(dev, attr, buf);
+}
+static DEVICE_ATTR_RO(soc_temp);
 
 static ssize_t heartbeat_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -219,6 +231,7 @@ static struct attribute *mfds_attrs[] = {
     &dev_attr_led_state.attr,
     &dev_attr_temp_mc.attr,
     &dev_attr_temp_c.attr,
+    &dev_attr_soc_temp.attr,
     &dev_attr_heartbeat.attr,
     NULL,
 };

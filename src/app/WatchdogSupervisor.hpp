@@ -16,6 +16,8 @@ public:
 
 public slots:
     void ping();
+    void feedDataHeartbeat();
+    Q_INVOKABLE void feedRenderHeartbeat();
 
 private:
     void openDevice(int timeoutSec);
@@ -24,4 +26,10 @@ private:
     int m_fd;
     bool m_enabled;
     QTimer m_pingTimer;
+
+    // Subsystem Health Heartbeat flags
+    bool m_renderHeartbeat;
+    bool m_dataHeartbeat;
+    int m_missedHeartbeatCycles;
+    static constexpr int MAX_ALLOWED_MISSED_CYCLES = 2; // 2 * 5s = 10s of missed heartbeats triggers watchdog freeze
 };
