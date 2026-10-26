@@ -27,7 +27,7 @@ echo "[Step 1/4] Compiling application and kernel platform driver..."
 
 # 2. Transfer artifacts to Pi 4
 echo "[Step 2/4] Transferring artifacts to $TARGET_USER@$TARGET_IP:$REMOTE_DIR..."
-ssh -o BatchMode=yes -o ConnectTimeout=5 "$TARGET_USER@$TARGET_IP" "mkdir -p $REMOTE_DIR /boot/overlays /boot/firmware/overlays"
+ssh -o BatchMode=yes -o ConnectTimeout=15 "$TARGET_USER@$TARGET_IP" "mkdir -p $REMOTE_DIR /boot/overlays /boot/firmware/overlays"
 scp -q "$BINARY_LOCAL" "$TARGET_USER@$TARGET_IP:$REMOTE_DIR/appMultiFunctionDisplay"
 scp -q "$PROJECT_ROOT/src/driver/mfds_ctrl.ko" "$TARGET_USER@$TARGET_IP:$REMOTE_DIR/mfds_ctrl.ko"
 scp -q "$PROJECT_ROOT/devicetree/mfds-kiosk-overlay.dtbo" "$TARGET_USER@$TARGET_IP:$REMOTE_DIR/mfds-kiosk-overlay.dtbo"
@@ -88,7 +88,11 @@ fi
 
 # 5. Check status
 echo "=========================================================="
-ssh -o BatchMode=yes "$TARGET_USER@$TARGET_IP" "cat /tmp/mfds.log 2>/dev/null | head -n 10 || true"
+if [ "$MODE" == "--eglfs" ] || [ "$MODE" == "--service" ]; then
+    ssh -o BatchMode=yes "$TARGET_USER@$TARGET_IP" "tail -n 15 /var/log/mfds-kiosk.log 2>/dev/null || true"
+else
+    ssh -o BatchMode=yes "$TARGET_USER@$TARGET_IP" "cat /tmp/mfds.log 2>/dev/null | head -n 10 || true"
+fi
 if ssh -o BatchMode=yes "$TARGET_USER@$TARGET_IP" "pgrep -f appMultiFunctionDisplay >/dev/null"; then
     echo "[SUCCESS] MultiFunctionDisplay is RUNNING on Pi 4!"
     if [ "$MODE" == "--vnc" ]; then

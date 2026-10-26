@@ -86,13 +86,23 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("dataManager", &dataManager);
     engine.rootContext()->setContextProperty("watchdog", &watchdog);
 
+    const QUrl url(QStringLiteral("qrc:/qt/qml/MultiFunctionDisplay/Main.qml"));
+
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
-        &app, []() { QCoreApplication::exit(-1); },
+        &app, []() {
+            qCritical() << "[Main] FATAL: Failed to instantiate QML root object!";
+            QCoreApplication::exit(-1);
+        },
         Qt::QueuedConnection);
 
     // Hook frameSwapped to also feed render heartbeat when active animations are rendering
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
-                     &app, [&watchdog](QObject *object, const QUrl &) {
+                     &app, [&watchdog](QObject *object, const QUrl &objUrl) {
+        if (!object) {
+            qCritical() << "[Main] Object creation failed for:" << objUrl;
+            return;
+        }
+        qInfo() << "[Main] QML root object loaded successfully:" << objUrl;
         auto *window = qobject_cast<QQuickWindow*>(object);
         if (window) {
             QObject::connect(window, &QQuickWindow::frameSwapped,
@@ -101,8 +111,12 @@ int main(int argc, char *argv[])
         }
     });
 
-    // Load Main QML Module
-    engine.loadFromModule("MultiFunctionDisplay", "Main");
+    // Load Main QML
+    engine.load(url);
+    if (engine.rootObjects().isEmpty()) {
+        qWarning() << "[Main] Direct QRC load returned no root objects. Attempting loadFromModule...";
+        engine.loadFromModule("MultiFunctionDisplay", "Main");
+    }
 
     // Execute application event loop
     int exitCode = app.exec();
