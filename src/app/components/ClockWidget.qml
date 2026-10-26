@@ -2,16 +2,18 @@ import QtQuick
 import QtQuick.Layouts
 
 Item {
-    width: 300
-    height: 100
+    id: clockRoot
+    implicitWidth: 320
+    implicitHeight: 90
 
     property string currentTime: "00:00:00"
-    property string currentDate: "Thứ Hai, 01/01/2026"
+    property string currentDate: "Đang cập nhật..."
 
     Timer {
         interval: 1000
         running: true
         repeat: true
+        triggeredOnStart: true
         onTriggered: {
             var date = new Date()
             currentTime = date.toLocaleTimeString(Qt.locale("vi_VN"), "HH:mm:ss")
@@ -21,17 +23,19 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
+        spacing: 2
         Text {
-            text: currentTime
+            text: clockRoot.currentTime
             font.pixelSize: 48
             font.bold: true
-            color: "white"
+            color: "#38bdf8"
             Layout.alignment: Qt.AlignRight
         }
         Text {
-            text: currentDate
-            font.pixelSize: 24
-            color: "#94a3b8"
+            text: clockRoot.currentDate
+            font.pixelSize: 20
+            font.weight: Font.Medium
+            color: "#fbbf24"
             Layout.alignment: Qt.AlignRight
         }
     }

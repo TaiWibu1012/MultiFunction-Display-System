@@ -27,7 +27,7 @@ echo "[Step 1/4] Compiling application and kernel platform driver..."
 
 # 2. Transfer artifacts to Pi 4
 echo "[Step 2/4] Transferring artifacts to $TARGET_USER@$TARGET_IP:$REMOTE_DIR..."
-ssh -o BatchMode=yes -o ConnectTimeout=15 "$TARGET_USER@$TARGET_IP" "mkdir -p $REMOTE_DIR /boot/overlays /boot/firmware/overlays"
+ssh -o BatchMode=yes -o ConnectTimeout=15 "$TARGET_USER@$TARGET_IP" "/etc/init.d/mfds-kiosk stop 2>/dev/null || killall -9 appMultiFunctionDisplay 2>/dev/null || true; mkdir -p $REMOTE_DIR /boot/overlays /boot/firmware/overlays"
 scp -q "$BINARY_LOCAL" "$TARGET_USER@$TARGET_IP:$REMOTE_DIR/appMultiFunctionDisplay"
 scp -q "$PROJECT_ROOT/src/driver/mfds_ctrl.ko" "$TARGET_USER@$TARGET_IP:$REMOTE_DIR/mfds_ctrl.ko"
 scp -q "$PROJECT_ROOT/devicetree/mfds-kiosk-overlay.dtbo" "$TARGET_USER@$TARGET_IP:$REMOTE_DIR/mfds-kiosk-overlay.dtbo"
