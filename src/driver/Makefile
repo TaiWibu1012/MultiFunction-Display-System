@@ -6,10 +6,10 @@
 obj-m += mfds_ctrl.o
 
 # Auto-detect Kernel Build Directory (Yocto Tree / SDK / Native)
-YOCTO_KDIR := /home/tai/yocto-build/build_pi4_64/tmp/work/raspberrypi4_64-poky-linux/linux-raspberrypi/6.6.63+git/linux-raspberrypi4_64-standard-build
-SDK_KDIR   := /opt/poky/5.0.19-pi4-64/sysroots/cortexa72-poky-linux/usr/src/kernel
+YOCTO_KDIR ?= $(wildcard $(HOME)/yocto-build/build_pi4_64/tmp/work/raspberrypi4_64-poky-linux/linux-raspberrypi/6.6.63+git/linux-raspberrypi4_64-standard-build)
+SDK_KDIR   ?= /opt/poky/5.0.19-pi4-64/sysroots/cortexa72-poky-linux/usr/src/kernel
 
-ifneq ($(wildcard $(YOCTO_KDIR)),)
+ifneq ($(strip $(YOCTO_KDIR)),)
     KDIR ?= $(YOCTO_KDIR)
 else ifneq ($(wildcard $(SDK_KDIR)),)
     KDIR ?= $(SDK_KDIR)

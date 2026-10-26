@@ -10,6 +10,7 @@
 #include <QFile>
 #include <QTimer>
 #include <QDebug>
+#include <QThreadPool>
 
 class DataManager : public QObject
 {
@@ -24,6 +25,7 @@ class DataManager : public QObject
 
 public:
     explicit DataManager(QObject *parent = nullptr);
+    ~DataManager() override;
 
     QVariantList notices() const { return m_notices; }
     QVariantList schedules() const { return m_schedules; }
@@ -32,6 +34,7 @@ public:
     QString location() const { return m_location; }
     QString bannerTitle() const { return m_bannerTitle; }
     bool hasValidData() const { return m_hasValidData; }
+    QString currentDataFilePath() const { return m_dataFilePath; }
 
 public slots:
     void reload();
@@ -39,20 +42,27 @@ public slots:
 signals:
     void dataChanged();
     void dataReadSuccessful();
+    void healthHeartbeat(); // DEF-01: Continuous liveness signal for Watchdog
 
 private slots:
     void handleWatchedPathChanged(const QString &path);
+    void checkWatcherHealth(); // DEF-01: Periodic health verification
+    void applyParsedData(const QJsonObject &root, bool success);
 
 private:
     void loadDefaults();
-    bool parseJsonData(const QByteArray &data);
     void setupWatchers();
 
+    const QString m_canonicalPath;
+    const QString m_fallbackPath;
     QString m_dataFilePath;
     QString m_parentDirPath;
+
     QFileSystemWatcher m_watcher;
     QTimer m_debounceTimer;
+    QTimer m_healthTimer;
     bool m_hasValidData;
+    bool m_reloadInProgress;
 
     QVariantList m_notices;
     QVariantList m_schedules;
@@ -61,3 +71,4 @@ private:
     QString m_location;
     QString m_bannerTitle;
 };
+

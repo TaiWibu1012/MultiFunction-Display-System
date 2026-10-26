@@ -8,16 +8,21 @@
 #include <csignal>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include "DataManager.hpp"
 #include "WatchdogSupervisor.hpp"
 
 // Socketpair descriptor for asynchronous POSIX signal delivery into Qt Event Loop
-static int sigFd[2];
+// DEF-08: Initialized to -1 and closed cleanly upon termination
+static int sigFd[2] = {-1, -1};
 
 static void posixSignalHandler(int sig)
 {
     char a = static_cast<char>(sig);
-    ::write(sigFd[0], &a, sizeof(a));
+    if (sigFd[0] >= 0) {
+        ssize_t ret = ::write(sigFd[0], &a, sizeof(a));
+        (void)ret; // Non-blocking write; ignore return in async signal handler
+    }
 }
 
 int main(int argc, char *argv[])
@@ -32,8 +37,8 @@ int main(int argc, char *argv[])
     // Hide mouse cursor for dedicated kiosk appliance
     app.setOverrideCursor(QCursor(Qt::BlankCursor));
 
-    // 1. Setup POSIX signal handler to ensure orderly destruction on SIGTERM/SIGINT
-    if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigFd) == 0) {
+    // 1. Setup POSIX signal handler with non-blocking socketpair (DEF-08)
+    if (::socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0, sigFd) == 0) {
         struct sigaction sa;
         sa.sa_handler = posixSignalHandler;
         sigemptyset(&sa.sa_mask);
@@ -44,11 +49,14 @@ int main(int argc, char *argv[])
 
         auto *sn = new QSocketNotifier(sigFd[1], QSocketNotifier::Read, &app);
         QObject::connect(sn, &QSocketNotifier::activated, [&app]() {
-            char sig;
-            ::read(sigFd[1], &sig, sizeof(sig));
-            qInfo() << "[Main] Received shutdown signal (" << int(sig) << "). Gracefully closing application...";
-            app.quit();
+            char sig = 0;
+            if (::read(sigFd[1], &sig, sizeof(sig)) > 0) {
+                qInfo() << "[Main] Received shutdown signal (" << int(sig) << "). Gracefully closing application...";
+                app.quit();
+            }
         });
+    } else {
+        qWarning() << "[Main] Failed to create signal socketpair. Falling back to default signal disposition.";
     }
 
     // 2. Initialize Hardware Watchdog Supervisor (15s hardware timeout, 5s check interval)
@@ -57,9 +65,21 @@ int main(int argc, char *argv[])
     // 3. Initialize DataManager
     DataManager dataManager;
 
-    // Connect Data Heartbeat: whenever data is read/parsed successfully, feed the watchdog
+    // DEF-01: Connect Data Heartbeat
+    // - Continuous health heartbeat verifies IPC watcher liveness even when data.json is static
+    // - dataReadSuccessful also pulses heartbeat whenever new payload is processed
+    QObject::connect(&dataManager, &DataManager::healthHeartbeat,
+                     &watchdog, &WatchdogSupervisor::feedDataHeartbeat);
     QObject::connect(&dataManager, &DataManager::dataReadSuccessful,
                      &watchdog, &WatchdogSupervisor::feedDataHeartbeat);
+
+    // DEF-02: Connect Render / GUI Event Loop Heartbeat
+    // A periodic 2-second GUI timer ensures static QML scenes and DPMS standby display modes
+    // do not starve the watchdog, while still guaranteeing the GUI event loop is actively dispatching
+    auto *guiHeartbeatTimer = new QTimer(&app);
+    QObject::connect(guiHeartbeatTimer, &QTimer::timeout,
+                     &watchdog, &WatchdogSupervisor::feedRenderHeartbeat);
+    guiHeartbeatTimer->start(2000);
 
     // 4. Initialize QML Engine
     QQmlApplicationEngine engine;
@@ -70,7 +90,7 @@ int main(int argc, char *argv[])
         &app, []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
 
-    // Connect Render Heartbeat: once root QML window is created, hook frameSwapped or continuous render pulse
+    // Hook frameSwapped to also feed render heartbeat when active animations are rendering
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [&watchdog](QObject *object, const QUrl &) {
         auto *window = qobject_cast<QQuickWindow*>(object);
@@ -78,19 +98,25 @@ int main(int argc, char *argv[])
             QObject::connect(window, &QQuickWindow::frameSwapped,
                              &watchdog, &WatchdogSupervisor::feedRenderHeartbeat);
             qInfo() << "[Main] Render loop hooked to Watchdog heartbeat via QQuickWindow::frameSwapped.";
-        } else {
-            // Fallback render pulse if running headlessly or off-screen
-            auto *renderPulseTimer = new QTimer(&watchdog);
-            QObject::connect(renderPulseTimer, &QTimer::timeout,
-                             &watchdog, &WatchdogSupervisor::feedRenderHeartbeat);
-            renderPulseTimer->start(1000);
-            qInfo() << "[Main] Fallback render heartbeat pulse active.";
         }
     });
 
     // Load Main QML Module
     engine.loadFromModule("MultiFunctionDisplay", "Main");
 
-    // app.exec() will return cleanly on app.quit(), causing ~WatchdogSupervisor() to run and write 'V'
-    return app.exec();
+    // Execute application event loop
+    int exitCode = app.exec();
+
+    // DEF-08: Orderly cleanup of signal socket descriptors
+    if (sigFd[0] >= 0) {
+        ::close(sigFd[0]);
+        sigFd[0] = -1;
+    }
+    if (sigFd[1] >= 0) {
+        ::close(sigFd[1]);
+        sigFd[1] = -1;
+    }
+
+    return exitCode;
 }
+

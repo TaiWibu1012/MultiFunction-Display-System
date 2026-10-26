@@ -8,7 +8,10 @@ Type=simple
 User=root
 WorkingDirectory=/home/root/mfds
 Environment="QT_QPA_PLATFORM=eglfs"
+Environment="QT_QPA_EGLFS_FORCE888=1"
 Environment="QT_QPA_EGLFS_NO_LIBINPUT=0"
+Environment="QT_QPA_EGLFS_KMS_CONFIG=/etc/qt6/eglfs_kms.json"
+ExecStartPre=/bin/sh -c 'mkdir -p /var/lib/mfds && [ ! -f /var/lib/mfds/data.json ] && [ -f /home/root/mfds/data_sample.json ] && cp /home/root/mfds/data_sample.json /var/lib/mfds/data.json.tmp && sync && mv -f /var/lib/mfds/data.json.tmp /var/lib/mfds/data.json || true'
 ExecStart=/home/root/mfds/appMultiFunctionDisplay
 Restart=always
 RestartSec=2

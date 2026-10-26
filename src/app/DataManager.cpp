@@ -2,50 +2,66 @@
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QDir>
+#include <QMetaObject>
 
 DataManager::DataManager(QObject *parent)
     : QObject(parent)
+    , m_canonicalPath(QStringLiteral("/var/lib/mfds/data.json"))
+    , m_fallbackPath(QCoreApplication::applicationDirPath() + QStringLiteral("/data_sample.json"))
+    , m_dataFilePath(m_canonicalPath)
     , m_hasValidData(false)
+    , m_reloadInProgress(false)
     , m_deviceName("MFDS-Display-Box")
     , m_location("Văn Phòng Khoa KTMT")
     , m_bannerTitle("BẢNG TIN ĐIỆN TỬ THÔNG MINH")
 {
-    // Search order for data storage path
-    const QString systemPath = QStringLiteral("/var/lib/mfds/data.json");
-    const QString localPath = QCoreApplication::applicationDirPath() + QStringLiteral("/data_sample.json");
+    m_parentDirPath = QFileInfo(m_canonicalPath).absolutePath();
 
-    if (QFile::exists(systemPath)) {
-        m_dataFilePath = systemPath;
+    // Verify canonical path existence; fallback to application sample if missing initially
+    if (!QFile::exists(m_canonicalPath) && QFile::exists(m_fallbackPath)) {
+        m_dataFilePath = m_fallbackPath;
+        qInfo() << "[DataManager] Canonical path" << m_canonicalPath << "not found at startup; using fallback" << m_fallbackPath;
     } else {
-        m_dataFilePath = localPath;
+        m_dataFilePath = m_canonicalPath;
     }
-    m_parentDirPath = QFileInfo(m_dataFilePath).absolutePath();
 
-    // Setup debounce timer (150ms) to coalesce rapid inotify events and partial writes
+    // Debounce timer (150ms) to coalesce inotify bursts and wait for atomic sync
     m_debounceTimer.setSingleShot(true);
     m_debounceTimer.setInterval(150);
     connect(&m_debounceTimer, &QTimer::timeout, this, &DataManager::reload);
 
+    // DEF-01: Periodic health heartbeat timer (2000ms) to monitor watcher & thread health
+    connect(&m_healthTimer, &QTimer::timeout, this, &DataManager::checkWatcherHealth);
+    m_healthTimer.start(2000);
+
     setupWatchers();
 
-    // Initial load
+    // Initial asynchronous load
     reload();
+}
+
+DataManager::~DataManager()
+{
+    m_healthTimer.stop();
+    m_debounceTimer.stop();
 }
 
 void DataManager::setupWatchers()
 {
-    // 1. Watch target file directly
-    if (QFile::exists(m_dataFilePath)) {
-        if (!m_watcher.files().contains(m_dataFilePath)) {
-            m_watcher.addPath(m_dataFilePath);
-        }
+    // Ensure parent directory exists for inotify watching
+    QDir parentDir(m_parentDirPath);
+    if (!parentDir.exists()) {
+        parentDir.mkpath(QStringLiteral("."));
     }
 
-    // 2. Watch parent directory to catch atomic rename/replace (IN_MOVED_TO/IN_CREATE)
-    if (QDir(m_parentDirPath).exists()) {
-        if (!m_watcher.directories().contains(m_parentDirPath)) {
-            m_watcher.addPath(m_parentDirPath);
-        }
+    // Always watch canonical parent directory to catch creation/atomic replacement of data.json (DEF-06)
+    if (parentDir.exists() && !m_watcher.directories().contains(m_parentDirPath)) {
+        m_watcher.addPath(m_parentDirPath);
+    }
+
+    // If canonical or current data file exists, watch it directly
+    if (QFile::exists(m_dataFilePath) && !m_watcher.files().contains(m_dataFilePath)) {
+        m_watcher.addPath(m_dataFilePath);
     }
 
     connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, &DataManager::handleWatchedPathChanged);
@@ -54,56 +70,117 @@ void DataManager::setupWatchers()
 
 void DataManager::handleWatchedPathChanged(const QString &path)
 {
-    qDebug() << "[DataManager] Detected IPC inotify event on:" << path;
-
-    // If file was replaced atomically (rename), re-add file to watcher
-    if (QFile::exists(m_dataFilePath) && !m_watcher.files().contains(m_dataFilePath)) {
-        m_watcher.addPath(m_dataFilePath);
+    // DEF-06: Filter directory changes specifically for data.json creation or modification
+    if (path == m_parentDirPath) {
+        // Directory change: check if canonical file was created or modified
+        if (QFile::exists(m_canonicalPath)) {
+            if (m_dataFilePath != m_canonicalPath) {
+                qInfo() << "[DataManager] Canonical data.json detected in" << m_parentDirPath << "; switching target.";
+                m_dataFilePath = m_canonicalPath;
+            }
+            if (!m_watcher.files().contains(m_canonicalPath)) {
+                m_watcher.addPath(m_canonicalPath);
+            }
+            m_debounceTimer.start();
+        }
+        return;
     }
 
-    // Restart debounce timer so file write can complete before parsing
-    m_debounceTimer.start();
+    // File change event on watched file
+    if (path == m_dataFilePath || path == m_canonicalPath) {
+        // If file was replaced atomically via rename, inotify watcher might drop it; re-add if exists
+        if (QFile::exists(path) && !m_watcher.files().contains(path)) {
+            m_watcher.addPath(path);
+        }
+        m_debounceTimer.start();
+    }
+}
+
+void DataManager::checkWatcherHealth()
+{
+    // DEF-01: Health check pulse for WatchdogSupervisor
+    // Verify that the event loop is responsive and inotify watcher or target storage is active
+    bool watcherOk = !m_watcher.directories().isEmpty() || !m_watcher.files().isEmpty();
+    bool fileOk = QFile::exists(m_dataFilePath) || QFile::exists(m_canonicalPath) || m_hasValidData;
+
+    if (watcherOk && fileOk) {
+        emit healthHeartbeat();
+    } else {
+        qWarning() << "[DataManager] Watcher health degraded (watcherOk:" << watcherOk << "fileOk:" << fileOk << ")";
+    }
 }
 
 void DataManager::reload()
 {
-    QFile file(m_dataFilePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qWarning() << "[DataManager] Cannot open data file:" << m_dataFilePath;
-        if (!m_hasValidData) {
-            qInfo() << "[DataManager] No previous data in memory. Loading default fallback.";
-            loadDefaults();
-        }
+    if (m_reloadInProgress) {
         return;
     }
+    m_reloadInProgress = true;
 
-    QByteArray rawData = file.readAll();
-    file.close();
-
-    if (rawData.trimmed().isEmpty()) {
-        qWarning() << "[DataManager] Read empty payload (possible partial write). Preserving existing cache.";
-        return;
-    }
-
-    if (!parseJsonData(rawData)) {
-        qWarning() << "[DataManager] JSON parsing failed. Existing memory cache retained.";
-        if (!m_hasValidData) {
-            loadDefaults();
+    // Check if canonical path has become available
+    if (m_dataFilePath != m_canonicalPath && QFile::exists(m_canonicalPath)) {
+        m_dataFilePath = m_canonicalPath;
+        if (!m_watcher.files().contains(m_canonicalPath)) {
+            m_watcher.addPath(m_canonicalPath);
         }
     }
+
+    const QString targetFile = m_dataFilePath;
+
+    // DEF-04: Offload disk I/O and JSON deserialization to worker thread pool
+    QThreadPool::globalInstance()->start([this, targetFile]() {
+        QFile file(targetFile);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QMetaObject::invokeMethod(this, [this]() {
+                qWarning() << "[DataManager] Asynchronous reader cannot open file:" << m_dataFilePath;
+                if (!m_hasValidData) {
+                    loadDefaults();
+                }
+                m_reloadInProgress = false;
+            }, Qt::QueuedConnection);
+            return;
+        }
+
+        QByteArray rawData = file.readAll();
+        file.close();
+
+        if (rawData.trimmed().isEmpty()) {
+            QMetaObject::invokeMethod(this, [this]() {
+                qWarning() << "[DataManager] Read empty payload (atomic write in progress). Preserving cache.";
+                m_reloadInProgress = false;
+            }, Qt::QueuedConnection);
+            return;
+        }
+
+        QJsonParseError parseError;
+        QJsonDocument doc = QJsonDocument::fromJson(rawData, &parseError);
+        if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+            QMetaObject::invokeMethod(this, [this, errStr = parseError.errorString()]() {
+                qWarning() << "[DataManager] Asynchronous JSON parse error:" << errStr;
+                if (!m_hasValidData) {
+                    loadDefaults();
+                }
+                m_reloadInProgress = false;
+            }, Qt::QueuedConnection);
+            return;
+        }
+
+        QJsonObject rootObj = doc.object();
+        QMetaObject::invokeMethod(this, [this, rootObj]() {
+            applyParsedData(rootObj, true);
+            m_reloadInProgress = false;
+        }, Qt::QueuedConnection);
+    });
 }
 
-bool DataManager::parseJsonData(const QByteArray &data)
+void DataManager::applyParsedData(const QJsonObject &root, bool success)
 {
-    QJsonParseError parseError;
-    QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
-
-    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-        qWarning() << "[DataManager] JSON parse error:" << parseError.errorString();
-        return false;
+    if (!success) {
+        if (!m_hasValidData) {
+            loadDefaults();
+        }
+        return;
     }
-
-    QJsonObject root = doc.object();
 
     // 1. System info
     if (root.contains("system") && root["system"].isObject()) {
@@ -144,7 +221,7 @@ bool DataManager::parseJsonData(const QByteArray &data)
         }
     }
 
-    qDebug() << "[DataManager] Data reloaded successfully: "
+    qDebug() << "[DataManager] Data updated asynchronously:"
              << m_notices.size() << "notices,"
              << m_schedules.size() << "schedules,"
              << m_newsTicker.size() << "tickers.";
@@ -152,7 +229,7 @@ bool DataManager::parseJsonData(const QByteArray &data)
     m_hasValidData = true;
     emit dataChanged();
     emit dataReadSuccessful();
-    return true;
+    emit healthHeartbeat(); // Immediate heartbeat pulse upon successful data arrival
 }
 
 void DataManager::loadDefaults()
@@ -179,3 +256,4 @@ void DataManager::loadDefaults()
 
     emit dataChanged();
 }
+

@@ -51,12 +51,12 @@ void WatchdogSupervisor::openDevice(int timeoutSec)
 
 void WatchdogSupervisor::feedDataHeartbeat()
 {
-    m_dataHeartbeat = true;
+    m_dataHeartbeat.store(true, std::memory_order_relaxed);
 }
 
 void WatchdogSupervisor::feedRenderHeartbeat()
 {
-    m_renderHeartbeat = true;
+    m_renderHeartbeat.store(true, std::memory_order_relaxed);
 }
 
 void WatchdogSupervisor::ping()
@@ -65,24 +65,23 @@ void WatchdogSupervisor::ping()
         return;
     }
 
-    // Health Check Gate: Both render loop and data reader must report healthy
-    if (!m_renderHeartbeat || !m_dataHeartbeat) {
-        m_missedHeartbeatCycles++;
-        qWarning() << "[WatchdogSupervisor] Subsystem health check missing cycle!"
-                   << "Misses:" << m_missedHeartbeatCycles << "/" << MAX_ALLOWED_MISSED_CYCLES
-                   << "(Render:" << m_renderHeartbeat << "Data:" << m_dataHeartbeat << ")";
+    bool renderOk = m_renderHeartbeat.exchange(false, std::memory_order_acq_rel);
+    bool dataOk = m_dataHeartbeat.exchange(false, std::memory_order_acq_rel);
 
-        if (m_missedHeartbeatCycles >= MAX_ALLOWED_MISSED_CYCLES) {
+    // Health Check Gate: Both render loop and data reader must report healthy
+    if (!renderOk || !dataOk) {
+        int misses = ++m_missedHeartbeatCycles;
+        qWarning() << "[WatchdogSupervisor] Subsystem health check missing cycle!"
+                   << "Misses:" << misses << "/" << MAX_ALLOWED_MISSED_CYCLES
+                   << "(Render:" << renderOk << "Data:" << dataOk << ")";
+
+        if (misses >= MAX_ALLOWED_MISSED_CYCLES) {
             qCritical() << "[WatchdogSupervisor] SUBSYSTEM STALLED! Halting watchdog keepalive to trigger hardware reboot.";
             return; // Cease keepalive -> hardware watchdog will reset BCM2711
         }
     } else {
-        m_missedHeartbeatCycles = 0;
+        m_missedHeartbeatCycles.store(0, std::memory_order_relaxed);
     }
-
-    // Reset heartbeats for next monitoring cycle
-    m_renderHeartbeat = false;
-    m_dataHeartbeat = false;
 
     // Ping using ioctl keepalive or byte write fallback
     if (ioctl(m_fd, WDIOC_KEEPALIVE, 0) < 0) {

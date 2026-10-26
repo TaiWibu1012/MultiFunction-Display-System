@@ -130,12 +130,14 @@ run_test "Test 3: Kernel Platform Driver Compilation & DT Matching Alias" test_d
 # Test Group 4: JSON Data Contract & Resilience Simulation
 # ----------------------------------------------------------------------
 test_json_resilience() {
-    python3 - << 'EOF'
+    python3 - "$PROJECT_ROOT" << 'EOF'
 import json
 import sys
+import os
 
-schema_path = "/home/tai/MultiFunction-Display-System/docs/data_schema.json"
-sample_path = "/home/tai/MultiFunction-Display-System/docs/data_sample.json"
+project_root = sys.argv[1]
+schema_path = os.path.join(project_root, "docs/data_schema.json")
+sample_path = os.path.join(project_root, "docs/data_sample.json")
 
 try:
     with open(schema_path, 'r', encoding='utf-8') as f:
@@ -217,6 +219,35 @@ test_header_path_consistency() {
     fi
 }
 run_test "Test 7: Sysfs Interface Definition & soc_temp Consistency" test_header_path_consistency
+
+# ----------------------------------------------------------------------
+# Test Group 8: Watchdog Supervisor Concurrency & Static Data Keepalive (DEF-01, DEF-02, DEF-03, DEF-12)
+# ----------------------------------------------------------------------
+test_watchdog_concurrency_and_static_data() {
+    local test_src="$PROJECT_ROOT/tests/test_watchdog_supervisor.cpp"
+    local test_bin="/tmp/test_watchdog_supervisor_$$"
+
+    if [ ! -f "$test_src" ]; then
+        echo "Test source $test_src not found."
+        return 1
+    fi
+
+    if ! g++ -std=c++17 -pthread -O2 "$test_src" -o "$test_bin"; then
+        echo "Failed to compile test_watchdog_supervisor.cpp"
+        return 1
+    fi
+
+    if ! "$test_bin"; then
+        rm -f "$test_bin"
+        echo "test_watchdog_supervisor execution failed."
+        return 1
+    fi
+
+    rm -f "$test_bin"
+    return 0
+}
+run_test "Test 8: Watchdog Concurrency, Static Data Keepalive & Deadlock Freeze (C++ Integration)" test_watchdog_concurrency_and_static_data
+
 
 # ----------------------------------------------------------------------
 # Summary

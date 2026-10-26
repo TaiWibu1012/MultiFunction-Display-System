@@ -20,6 +20,7 @@
 #include <linux/of_device.h>
 #include <linux/gpio/consumer.h>
 #include <linux/interrupt.h>
+#include <linux/irq.h>
 #include <linux/sysfs.h>
 #include <linux/device.h>
 #include <linux/mutex.h>
@@ -40,6 +41,7 @@ struct mfds_kiosk_dev {
     bool screen_active;
     bool led_state;
     unsigned long last_irq_jiffies;
+    u64 last_heartbeat;
     struct thermal_zone_device *tz_dev;
 };
 
@@ -86,6 +88,7 @@ static irqreturn_t mfds_btn_thread_fn(int irq, void *dev_id)
     /* Notify userspace sysfs listeners (poll/select/epoll) */
     sysfs_notify(&mdev->dev->kobj, NULL, "screen_power");
     sysfs_notify(&mdev->dev->kobj, NULL, "button_count");
+    sysfs_notify(&mdev->dev->kobj, NULL, "led_state");
 
     return IRQ_HANDLED;
 }
@@ -167,6 +170,9 @@ static ssize_t led_state_store(struct device *dev, struct device_attribute *attr
         gpiod_set_value_cansleep(mdev->led_gpiod, mdev->led_state ? 1 : 0);
     mutex_unlock(&mdev->lock);
 
+    /* DEF-07: Awaken pollers on led_state changes */
+    sysfs_notify(&dev->kobj, NULL, "led_state");
+
     return count;
 }
 static DEVICE_ATTR_RW(led_state);
@@ -178,7 +184,7 @@ static ssize_t temp_mc_show(struct device *dev, struct device_attribute *attr, c
     int ret;
 
     if (!mdev->tz_dev || IS_ERR(mdev->tz_dev))
-        return sysfs_emit(buf, "-1\n");
+        return -ENODATA;
 
     ret = thermal_zone_get_temp(mdev->tz_dev, &temp);
     if (ret)
@@ -196,7 +202,7 @@ static ssize_t temp_c_show(struct device *dev, struct device_attribute *attr, ch
     int ret;
 
     if (!mdev->tz_dev || IS_ERR(mdev->tz_dev))
-        return sysfs_emit(buf, "N/A\n");
+        return -ENODATA;
 
     ret = thermal_zone_get_temp(mdev->tz_dev, &temp);
     if (ret)
@@ -217,13 +223,32 @@ static ssize_t soc_temp_show(struct device *dev, struct device_attribute *attr, 
 }
 static DEVICE_ATTR_RO(soc_temp);
 
+static ssize_t heartbeat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    struct mfds_kiosk_dev *mdev = dev_get_drvdata(dev);
+    u64 last;
+
+    mutex_lock(&mdev->lock);
+    last = mdev->last_heartbeat;
+    mutex_unlock(&mdev->lock);
+
+    return sysfs_emit(buf, "%llu\n", last);
+}
+
 static ssize_t heartbeat_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-    /* Userspace heartbeat ping */
-    dev_dbg(dev, "Heartbeat ping received from userspace kiosk\n");
+    struct mfds_kiosk_dev *mdev = dev_get_drvdata(dev);
+
+    mutex_lock(&mdev->lock);
+    mdev->last_heartbeat = get_jiffies_64();
+    mutex_unlock(&mdev->lock);
+
+    /* DEF-07: Telemetry notify and record userspace ping */
+    sysfs_notify(&dev->kobj, NULL, "heartbeat");
+    dev_dbg(dev, "Heartbeat ping received from userspace kiosk (jiffies=%llu)\n", mdev->last_heartbeat);
     return count;
 }
-static DEVICE_ATTR_WO(heartbeat);
+static DEVICE_ATTR_RW(heartbeat);
 
 static struct attribute *mfds_attrs[] = {
     &dev_attr_screen_power.attr,
@@ -271,15 +296,21 @@ static int mfds_kiosk_probe(struct platform_device *pdev)
     if (mdev->btn_gpiod) {
         mdev->btn_irq = gpiod_to_irq(mdev->btn_gpiod);
         if (mdev->btn_irq > 0) {
+            unsigned int irq_flags = irq_get_trigger_type(mdev->btn_irq);
+            if (!irq_flags)
+                irq_flags = IRQF_TRIGGER_FALLING;
+
             ret = devm_request_threaded_irq(dev, mdev->btn_irq,
                                            mfds_btn_isr,
                                            mfds_btn_thread_fn,
-                                           IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+                                           irq_flags | IRQF_ONESHOT,
                                            "mfds_button", mdev);
             if (ret)
                 dev_warn(dev, "Failed to register threaded IRQ %d (ret=%d)\n", mdev->btn_irq, ret);
         }
     }
+
+    mdev->last_heartbeat = get_jiffies_64();
 
     /* Locate BCM2711 SoC thermal zone */
     mdev->tz_dev = thermal_zone_get_zone_by_name("cpu-thermal");
