@@ -1,0 +1,16 @@
+-I
+/home/dung/DisplayBox_Project/build
+-I
+/home/dung/DisplayBox_Project/build/DashboardUI
+-I
+/home/dung/DisplayBox_Project/build
+-I
+/home/dung/Qt/6.12.0/gcc_64/qml
+--resource
+/home/dung/DisplayBox_Project/build/.qt/rcc/qmake_DashboardUI.qrc
+--resource
+/home/dung/DisplayBox_Project/build/.qt/rcc/DashboardApp_raw_qml_0.qrc
+--resource
+/home/dung/DisplayBox_Project/build/.qt/rcc/DashboardApp_raw_res_0.qrc
+--module
+DashboardUI

@@ -1,0 +1,8 @@
+<RCC>
+  <qresource prefix="/DashboardUI/">
+    <file alias="src/app/Main.qml">/home/dung/DisplayBox_Project/src/app/Main.qml</file>
+    <file alias="src/app/components/ClockWidget.qml">/home/dung/DisplayBox_Project/src/app/components/ClockWidget.qml</file>
+    <file alias="src/app/components/NewsBanner.qml">/home/dung/DisplayBox_Project/src/app/components/NewsBanner.qml</file>
+  </qresource>
+</RCC>
+

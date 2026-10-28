@@ -1,0 +1,15 @@
+-rootPath
+/home/dung/DisplayBox_Project
+-cmake-output
+-output-file
+/home/dung/DisplayBox_Project/build/.qt/qml_imports/DashboardApp_conf.cmake
+-importPath
+/home/dung/DisplayBox_Project/build
+-importPath
+/home/dung/DisplayBox_Project/build/DashboardUI
+-importPath
+/home/dung/Qt/6.12.0/gcc_64/qml
+-qrcFiles
+/home/dung/DisplayBox_Project/build/.qt/rcc/qmake_DashboardUI.qrc
+/home/dung/DisplayBox_Project/build/.qt/rcc/DashboardApp_raw_qml_0.qrc
+/home/dung/DisplayBox_Project/build/.qt/rcc/DashboardApp_raw_res_0.qrc

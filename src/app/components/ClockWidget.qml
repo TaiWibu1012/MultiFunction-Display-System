@@ -3,39 +3,43 @@ import QtQuick.Layouts
 
 Item {
     id: clockRoot
-    implicitWidth: 260
+    implicitWidth: 280
     implicitHeight: 70
 
-    property string currentTime: "00:00:00"
-    property string currentDate: "Đang cập nhật..."
+    property string timeString: "00:00:00"
+    property string dateString: "Đang cập nhật..."
+
+    function updateClock() {
+        var now = new Date()
+        timeString = Qt.formatTime(now, "hh:mm:ss")
+        var days = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"]
+        dateString = days[now.getDay()] + ", " + Qt.formatDate(now, "dd/MM/yyyy")
+    }
 
     Timer {
         interval: 1000
         running: true
         repeat: true
         triggeredOnStart: true
-        onTriggered: {
-            var date = new Date()
-            currentTime = date.toLocaleTimeString(Qt.locale("vi_VN"), "HH:mm:ss")
-            currentDate = date.toLocaleDateString(Qt.locale("vi_VN"), "dddd, dd/MM/yyyy")
-        }
+        onTriggered: clockRoot.updateClock()
     }
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 1
+        spacing: 2
+
         Text {
-            text: clockRoot.currentTime
+            text: clockRoot.timeString
             font.pixelSize: 34
             font.bold: true
-            color: "#38bdf8"
+            color: "#FFE100"
             Layout.alignment: Qt.AlignRight
         }
+
         Text {
-            text: clockRoot.currentDate
-            font.pixelSize: 14
-            font.weight: Font.Medium
-            color: "#fbbf24"
+            text: clockRoot.dateString
+            font.pixelSize: 15
+            color: "#C7E9D3"
             Layout.alignment: Qt.AlignRight
         }
     }
