@@ -27,12 +27,15 @@ echo "[Step 1/4] Compiling application and kernel platform driver..."
 
 # 2. Transfer artifacts to Pi 4
 echo "[Step 2/4] Transferring artifacts to $TARGET_USER@$TARGET_IP:$REMOTE_DIR..."
-ssh -o BatchMode=yes -o ConnectTimeout=15 "$TARGET_USER@$TARGET_IP" "/etc/init.d/mfds-kiosk stop 2>/dev/null || killall -9 appMultiFunctionDisplay 2>/dev/null || true; mkdir -p $REMOTE_DIR /boot/overlays /boot/firmware/overlays"
+ssh -o BatchMode=yes -o ConnectTimeout=15 "$TARGET_USER@$TARGET_IP" "/etc/init.d/mfds-kiosk stop 2>/dev/null || killall -9 appMultiFunctionDisplay 2>/dev/null || true; mkdir -p $REMOTE_DIR /boot/overlays /boot/firmware/overlays /etc/qt6"
 scp -q "$BINARY_LOCAL" "$TARGET_USER@$TARGET_IP:$REMOTE_DIR/appMultiFunctionDisplay"
 scp -q "$PROJECT_ROOT/src/driver/mfds_ctrl.ko" "$TARGET_USER@$TARGET_IP:$REMOTE_DIR/mfds_ctrl.ko"
 scp -q "$PROJECT_ROOT/devicetree/mfds-kiosk-overlay.dtbo" "$TARGET_USER@$TARGET_IP:$REMOTE_DIR/mfds-kiosk-overlay.dtbo"
 scp -q "$PROJECT_ROOT/scripts/mfds-kiosk.init" "$TARGET_USER@$TARGET_IP:/etc/init.d/mfds-kiosk"
 scp -q "$PROJECT_ROOT/docs/data_sample.json" "$TARGET_USER@$TARGET_IP:$REMOTE_DIR/data_sample.json"
+if [ -f "$PROJECT_ROOT/configs/eglfs_kms.json" ]; then
+    scp -q "$PROJECT_ROOT/configs/eglfs_kms.json" "$TARGET_USER@$TARGET_IP:/etc/qt6/eglfs_kms.json"
+fi
 
 # 3. DEF-05: Activate Device Tree Overlay and insert Kernel Platform Driver
 echo "[Step 3/4] Activating Device Tree overlay and inserting kernel driver..."
@@ -46,8 +49,13 @@ ssh -o BatchMode=yes "$TARGET_USER@$TARGET_IP" bash -c "'
     
     # Persist in config.txt if not already set
     for cfg in /boot/firmware/config.txt /boot/config.txt; do
-        if [ -f \"\$cfg\" ] && ! grep -q \"^dtoverlay=mfds-kiosk-overlay\" \"\$cfg\"; then
-            echo \"dtoverlay=mfds-kiosk-overlay\" >> \"\$cfg\"
+        if [ -f \"\$cfg\" ]; then
+            if ! grep -q \"^dtoverlay=mfds-kiosk-overlay\" \"\$cfg\"; then
+                echo \"dtoverlay=mfds-kiosk-overlay\" >> \"\$cfg\"
+            fi
+            if ! grep -q \"^hdmi_force_hotplug:1\" \"\$cfg\"; then
+                echo \"hdmi_force_hotplug:1=1\" >> \"\$cfg\"
+            fi
         fi
     done
 
