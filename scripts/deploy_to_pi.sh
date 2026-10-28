@@ -33,6 +33,7 @@ scp -q "$PROJECT_ROOT/src/driver/mfds_ctrl.ko" "$TARGET_USER@$TARGET_IP:$REMOTE_
 scp -q "$PROJECT_ROOT/devicetree/mfds-kiosk-overlay.dtbo" "$TARGET_USER@$TARGET_IP:$REMOTE_DIR/mfds-kiosk-overlay.dtbo"
 scp -q "$PROJECT_ROOT/scripts/mfds-kiosk.init" "$TARGET_USER@$TARGET_IP:/etc/init.d/mfds-kiosk"
 scp -q "$PROJECT_ROOT/docs/data_sample.json" "$TARGET_USER@$TARGET_IP:$REMOTE_DIR/data_sample.json"
+ssh -o BatchMode=yes "$TARGET_USER@$TARGET_IP" "mkdir -p /var/lib/mfds && cp $REMOTE_DIR/data_sample.json /var/lib/mfds/data.json.tmp && sync && mv -f /var/lib/mfds/data.json.tmp /var/lib/mfds/data.json"
 if [ -f "$PROJECT_ROOT/configs/eglfs_kms.json" ]; then
     scp -q "$PROJECT_ROOT/configs/eglfs_kms.json" "$TARGET_USER@$TARGET_IP:/etc/qt6/eglfs_kms.json"
 fi

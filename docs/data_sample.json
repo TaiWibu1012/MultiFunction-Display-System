@@ -1,69 +1,69 @@
 {
   "version": "1.0.0",
   "system": {
-    "device_name": "MFDS-Display-Box-Pi4",
-    "location": "Sảnh Văn Phòng Khoa KTMT",
-    "banner_title": "BẢNG TIN ĐIỆN TỬ THÔNG MINH"
+    "device_name": "MFDS-Display-Node-01",
+    "location": "Khu Vực Trung Tâm Điều Hành",
+    "banner_title": "HỆ THỐNG HIỂN THỊ ĐA CHỨC NĂNG (MFDS)"
   },
   "notices": [
     {
       "id": 1,
-      "title": "Hội nghị Nghiên cứu Khoa học & Công nghệ Nhúng",
-      "content": "Kính mời toàn thể cán bộ và sinh viên tham dự buổi báo cáo chuyên đề Embedded Linux & Edge AI tại Hội trường A.",
-      "priority": "urgent",
-      "date": "2026-10-21",
+      "title": "Vận hành Hệ thống Kiosk Thông minh",
+      "content": "Thiết bị hiển thị đa chức năng (MFDS) hoạt động ổn định trên hệ điều hành nhúng Yocto Linux và giao diện Qt 6.",
+      "priority": "notice",
+      "date": "2026-10-28",
       "active": true
     },
     {
       "id": 2,
-      "title": "Thông báo Nộp Đề cương Đồ án Tốt nghiệp",
-      "content": "Hạn chót nộp phiếu đăng ký đề cương chi tiết trước 17:00 ngày 25/10/2026 tại văn phòng khoa.",
-      "priority": "normal",
-      "date": "2026-10-20",
+      "title": "Kiểm tra Đồng bộ Dữ liệu Thời gian thực",
+      "content": "Cơ chế giao tiếp liên tiến trình (IPC) qua File và Inotify duy trì độ trễ cập nhật trạng thái dưới 100ms.",
+      "priority": "update",
+      "date": "2026-10-28",
       "active": true
     },
     {
       "id": 3,
-      "title": "Bảo trì Hệ thống Mạng Cuối tuần",
-      "content": "Trung tâm dữ liệu sẽ tiến hành nâng cấp hạ tầng mạng cáp quang từ 22:00 Thứ Bảy đến 04:00 Chủ Nhật.",
+      "title": "Giám sát Phần cứng & Watchdog BCM2711",
+      "content": "Mô-đun Watchdog Supervisor tự động duy trì chu kỳ kiểm tra liveness và nhiệt độ SoC định kỳ.",
       "priority": "info",
-      "date": "2026-10-19",
+      "date": "2026-10-28",
       "active": true
     }
   ],
   "schedules": [
     {
       "id": 1,
-      "time_slot": "08:00 - 09:30",
-      "event_name": "Họp Giao ban Bộ môn Kỹ thuật Máy tính",
-      "room": "Phòng B4.05",
-      "host": "ThS. Phan Đình Duy"
+      "time_slot": "08:30 - 10:00",
+      "event_name": "Kiểm tra Định kỳ Phần cứng & Ngoại vi",
+      "room": "Phòng Vận hành 01",
+      "host": "Kỹ sư Trực ban"
     },
     {
       "id": 2,
-      "time_slot": "09:45 - 11:30",
-      "event_name": "Review Đồ án Hệ thống Nhúng & IoT",
-      "room": "Phòng Lab E2.01",
-      "host": "Nhóm Đồ án MFDS"
+      "time_slot": "10:15 - 11:45",
+      "event_name": "Đánh giá Hiệu năng Hệ điều hành Nhúng",
+      "room": "Phòng Đo kiểm",
+      "host": "Ban Kỹ thuật"
     },
     {
       "id": 3,
-      "time_slot": "13:30 - 15:30",
-      "event_name": "Bảo vệ Luận văn Thạc sĩ",
-      "room": "Phòng Hội thảo C",
-      "host": "Hội đồng Chuyên môn"
+      "time_slot": "13:30 - 15:00",
+      "event_name": "Thử nghiệm Đồng bộ Dữ liệu IPC Kiosk",
+      "room": "Khu vực Triển khai",
+      "host": "Nhóm Phát triển"
     },
     {
       "id": 4,
-      "time_slot": "16:00 - 17:30",
-      "event_name": "Thử nghiệm Kiosk Display Box Pi 4",
-      "room": "Sảnh Văn phòng",
-      "host": "Lê Phúc Tài & Võ Thanh Dũng"
+      "time_slot": "15:30 - 17:00",
+      "event_name": "Tổng kết Số liệu Vận hành Thực nghiệm",
+      "room": "Phòng Điều hành",
+      "host": "Hội đồng Kỹ thuật"
     }
   ],
   "news_ticker": [
-    "CHÀO MỪNG QUÝ THẦY CÔ VÀ SINH VIÊN ĐẾN VỚI VĂN PHÒNG KHOA KỸ THUẬT MÁY TÍNH",
-    "THIẾT BỊ HỆ THỐNG HIỂN THỊ ĐA CHỨC NĂNG (MFDS) VẬN HÀNH TRÊN CUSTOM YOCTO LINUX EMBEDDED OS",
-    "NHIỆT ĐỘ PHÒNG HIỆN TẠI: 26°C | ĐỘ ẨM: 65% | KẾT NỐI MẠNG LAN: 1000 MBPS (HOẠT ĐỘNG TỐT)"
+    "HỆ THỐNG HIỂN THỊ ĐA CHỨC NĂNG (MFDS) VẬN HÀNH TRÊN CUSTOM YOCTO LINUX EMBEDDED OS",
+    "GIAO DIỆN ĐỒ HỌA HIỆU NĂNG CAO: QT 6.8 EGLFS KMS/DRM NATIVE - DIRECT RENDERING VC4",
+    "TRẠNG THÁI HỆ THỐNG: BÌNH THƯỜNG | KẾT NỐI MẠNG: ỔN ĐỊNH | WATCHDOG SUPERVISOR: ACTIVE"
   ]
 }

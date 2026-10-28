@@ -3,8 +3,8 @@ import QtQuick.Layouts
 
 Item {
     id: clockRoot
-    implicitWidth: 320
-    implicitHeight: 90
+    implicitWidth: 260
+    implicitHeight: 70
 
     property string currentTime: "00:00:00"
     property string currentDate: "Đang cập nhật..."
@@ -23,17 +23,17 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 2
+        spacing: 1
         Text {
             text: clockRoot.currentTime
-            font.pixelSize: 48
+            font.pixelSize: 34
             font.bold: true
             color: "#38bdf8"
             Layout.alignment: Qt.AlignRight
         }
         Text {
             text: clockRoot.currentDate
-            font.pixelSize: 20
+            font.pixelSize: 14
             font.weight: Font.Medium
             color: "#fbbf24"
             Layout.alignment: Qt.AlignRight
