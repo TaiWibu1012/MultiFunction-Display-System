@@ -1,0 +1,112 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          mfds-kiosk
+# Required-Start:    $network $local_fs
+# Required-Stop:     $network $local_fs
+# Default-Start:     5
+# Default-Stop:      0 1 6
+# Short-Description: Multi-Function Display System Kiosk Dashboard
+### END INIT INFO
+
+DAEMON="/home/root/mfds/appMultiFunctionDisplay"
+DAEMON_DIR="/home/root/mfds"
+PIDFILE="/var/run/mfds-kiosk.pid"
+LOGFILE="/var/log/mfds-kiosk.log"
+
+# EGLFS KMS/DRM Tuning per eglfs-kiosk-tuning skill
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-eglfs}"
+export QT_QPA_EGLFS_FORCE888=1
+export QT_QPA_EGLFS_NO_LIBINPUT=0
+if [ -f "/etc/qt6/eglfs_kms.json" ]; then
+    export QT_QPA_EGLFS_KMS_CONFIG="/etc/qt6/eglfs_kms.json"
+fi
+
+ensure_data_dir() {
+    mkdir -p /var/lib/mfds
+    if [ ! -f /var/lib/mfds/data.json ] && [ -f "$DAEMON_DIR/data_sample.json" ]; then
+        # Atomic copy per atomic-ipc-guard skill
+        cp "$DAEMON_DIR/data_sample.json" /var/lib/mfds/data.json.tmp
+        sync
+        mv -f /var/lib/mfds/data.json.tmp /var/lib/mfds/data.json
+    fi
+}
+
+start() {
+    echo "Starting Multi-Function Display System Kiosk..."
+    if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+        echo "MFDS Kiosk is already running."
+        return 0
+    fi
+
+    if [ ! -x "$DAEMON" ]; then
+        echo "Error: Binary $DAEMON not found or not executable."
+        return 1
+    fi
+
+    ensure_data_dir
+
+    cd "$DAEMON_DIR"
+    nohup "$DAEMON" >> "$LOGFILE" 2>&1 &
+    echo $! > "$PIDFILE"
+    echo "MFDS Kiosk started (PID: $(cat "$PIDFILE"))."
+}
+
+stop() {
+    echo "Stopping Multi-Function Display System Kiosk..."
+    if [ -f "$PIDFILE" ]; then
+        PID=$(cat "$PIDFILE")
+        if kill -0 "$PID" 2>/dev/null; then
+            echo "Sending graceful SIGTERM to PID $PID..."
+            kill "$PID" 2>/dev/null || true
+
+            # Graceful shutdown wait loop (up to 5s)
+            WAIT_COUNT=0
+            while kill -0 "$PID" 2>/dev/null && [ "$WAIT_COUNT" -lt 10 ]; do
+                sleep 0.5
+                WAIT_COUNT=$((WAIT_COUNT + 1))
+            done
+
+            # Fallback to SIGKILL only if process failed to terminate
+            if kill -0 "$PID" 2>/dev/null; then
+                echo "Warning: Process did not exit within 5s. Issuing SIGKILL..."
+                kill -9 "$PID" 2>/dev/null || true
+            fi
+        fi
+        rm -f "$PIDFILE"
+        echo "MFDS Kiosk stopped cleanly."
+    else
+        killall -9 appMultiFunctionDisplay 2>/dev/null || true
+        echo "MFDS Kiosk was not running."
+    fi
+}
+
+status() {
+    if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+        echo "MFDS Kiosk is running (PID: $(cat "$PIDFILE"))."
+    else
+        echo "MFDS Kiosk is stopped."
+    fi
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        stop
+        sleep 1
+        start
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit 0

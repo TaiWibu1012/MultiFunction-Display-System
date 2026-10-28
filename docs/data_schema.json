@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MFDS_Data_Contract",
+  "description": "Standardized Data Exchange Schema between Web Management App and Qt 6.8 Kiosk Display",
+  "type": "object",
+  "required": ["version", "system", "notices", "schedules", "news_ticker"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "example": "1.0.0"
+    },
+    "system": {
+      "type": "object",
+      "required": ["device_name", "location", "banner_title"],
+      "properties": {
+        "device_name": { "type": "string" },
+        "location": { "type": "string" },
+        "banner_title": { "type": "string" }
+      }
+    },
+    "notices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "content", "priority", "date", "active"],
+        "properties": {
+          "id": { "type": "integer" },
+          "title": { "type": "string" },
+          "content": { "type": "string" },
+          "priority": { "type": "string", "enum": ["normal", "urgent", "info"] },
+          "date": { "type": "string", "format": "date" },
+          "active": { "type": "boolean" }
+        }
+      }
+    },
+    "schedules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "time_slot", "event_name", "room", "host"],
+        "properties": {
+          "id": { "type": "integer" },
+          "time_slot": { "type": "string" },
+          "event_name": { "type": "string" },
+          "room": { "type": "string" },
+          "host": { "type": "string" }
+        }
+      }
+    },
+    "news_ticker": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}
