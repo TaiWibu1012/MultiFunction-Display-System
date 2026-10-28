@@ -1,0 +1,2 @@
+/home/dung/DisplayBox_Project/build/DashboardApp_autogen/include/../ISMKEKEPX5/moc_NewsFetcher.cpp.json
+/home/dung/DisplayBox_Project/build/DashboardApp_autogen/include/../ISMKEKEPX5/moc_WeatherFetcher.cpp.json

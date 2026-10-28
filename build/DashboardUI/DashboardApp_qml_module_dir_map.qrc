@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/">
+    <file alias="/DashboardUI">/home/dung/DisplayBox_Project/build/DashboardUI</file>
+
+  </qresource>
+</RCC>

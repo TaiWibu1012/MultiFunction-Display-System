@@ -1,0 +1,9 @@
+<RCC>
+  <qresource prefix="/DashboardUI/">
+    <file alias="src/app/assets/full_size_logo_fce.png">/home/dung/DisplayBox_Project/src/app/assets/full_size_logo_fce.png</file>
+    <file alias="src/app/assets/fonts/BeVietnamPro-Regular.ttf">/home/dung/DisplayBox_Project/src/app/assets/fonts/BeVietnamPro-Regular.ttf</file>
+    <file alias="src/app/assets/fonts/BeVietnamPro-SemiBold.ttf">/home/dung/DisplayBox_Project/src/app/assets/fonts/BeVietnamPro-SemiBold.ttf</file>
+    <file alias="src/app/assets/fonts/BeVietnamPro-Bold.ttf">/home/dung/DisplayBox_Project/src/app/assets/fonts/BeVietnamPro-Bold.ttf</file>
+  </qresource>
+</RCC>
+
