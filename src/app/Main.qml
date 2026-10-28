@@ -5,21 +5,19 @@ import "components"
 
 Window {
     id: rootWindow
-    width: 1920
-    height: 1080
     visible: true
     visibility: Window.FullScreen
     color: "#F2FFEF"
-    title: "FCE - UIT Multi-Function Display System"
+    title: "MFDS - Multi-Function Display System"
 
-    // Biến lưu giờ hiện tại (ví dụ 13:30 sẽ là 13.5), tự cập nhật mỗi phút
+    // Decimal hour for dynamic schedule state (e.g. 14:30 -> 14.5)
     property real currentHourDecimal: {
         var now = new Date()
         return now.getHours() + now.getMinutes() / 60.0
     }
 
     Timer {
-        interval: 60000 // Cập nhật mỗi 60 giây
+        interval: 30000 // Refresh schedule status every 30 seconds
         running: true
         repeat: true
         onTriggered: {
@@ -31,383 +29,339 @@ Window {
         }
     }
 
-    // Hàm tự động trả về nhãn trạng thái dựa theo khung giờ
-    function getScheduleStatus(startH, endH) {
+    function getScheduleStatus(timeSlot) {
+        if (!timeSlot || timeSlot.indexOf("-") === -1) return "SẮP DIỄN RA"
+        var parts = timeSlot.split("-")
+        var startParts = parts[0].trim().split(":")
+        var endParts = parts[1].trim().split(":")
+        var startH = parseFloat(startParts[0]) + (parseFloat(startParts[1]) || 0) / 60.0
+        var endH = parseFloat(endParts[0]) + (parseFloat(endParts[1]) || 0) / 60.0
+
         if (currentHourDecimal < startH) return "SẮP DIỄN RA"
         if (currentHourDecimal >= startH && currentHourDecimal <= endH) return "ĐANG DIỄN RA"
         return "ĐÃ KẾT THÚC"
     }
 
-    // Hàm tự động trả về màu sắc tương ứng
-    function getScheduleColor(startH, endH) {
-        if (currentHourDecimal < startH) return "#2563eb" // Xanh dương
-        if (currentHourDecimal >= startH && currentHourDecimal <= endH) return "#16a34a" // Xanh lá
-        return "#475569" // Xám trầm
-    }
-
-    // Dữ liệu Lịch hoạt động / Trực sảnh trong ngày
-    ListModel {
-        id: scheduleModel
-        ListElement {
-            time: "08:00 - 11:30"
-            startHour: 8.0
-            endHour: 11.5
-            title: "Trực Văn phòng Khoa & Tiếp nhận hồ sơ sinh viên"
-            location: "Phòng E6.2 - Tòa nhà E"
-        }
-        ListElement {
-            time: "09:30 - 11:30"
-            startHour: 9.5
-            endHour: 11.5
-            title: "Seminar Khoa học: Quang phổ cận hồng ngoại & Đánh giá nông sản"
-            location: "Phòng E6.1 / Trực tuyến"
-        }
-        ListElement {
-            time: "13:30 - 16:30"
-            startHour: 13.5
-            endHour: 16.5
-            title: "Thực hành Đồ án & Nghiên cứu tại Phòng Lab Hệ thống Nhúng"
-            location: "Phòng Lab KTMT - Tầng 6, Tòa E"
-        }
-        ListElement {
-            time: "14:00 - 16:30"
-            startHour: 14.0
-            endHour: 16.5
-            title: "Tiếp nhận đơn cứu xét Học vụ & Phát chứng chỉ GDQPAN"
-            location: "Văn phòng Khoa E6.2"
-        }
+    function getScheduleColor(timeSlot) {
+        var status = getScheduleStatus(timeSlot)
+        if (status === "ĐANG DIỄN RA") return "#16a34a" // Vivid Green
+        if (status === "SẮP DIỄN RA") return "#2563eb"  // Blue
+        return "#64748b" // Slate grey
     }
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 20
-        spacing: 16
+        anchors.leftMargin: Math.round(rootWindow.width * 0.015)
+        anchors.rightMargin: Math.round(rootWindow.width * 0.015)
+        anchors.topMargin: Math.round(rootWindow.height * 0.015)
+        anchors.bottomMargin: Math.max(50, Math.round(rootWindow.height * 0.08)) // Lifts clear above bottom scanlines
+        spacing: Math.max(8, Math.round(rootWindow.height * 0.012))
 
-        // ==================== 1. KHU VỰC HEADER ====================
+        // ====================================================================
+        // 1. HEADER SECTION (Emerald Green Bar with Title, Weather & Clock)
+        // ====================================================================
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 96
+            Layout.preferredHeight: Math.max(68, Math.round(rootWindow.height * 0.11))
             color: "#004030"
-            radius: 12
+            radius: 10
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 24
-                anchors.rightMargin: 24
-                spacing: 20
+                anchors.leftMargin: 18
+                anchors.rightMargin: 18
+                spacing: 14
 
-                // Logo Badge KTMT
+                // System Badge
                 Rectangle {
-                    Layout.preferredWidth: 223.04
-                    Layout.preferredHeight: 80
-                    radius: 12
-                    color: "#004030"
+                    Layout.preferredWidth: Math.max(140, Math.round(rootWindow.width * 0.12))
+                    Layout.preferredHeight: Math.max(48, Math.round(rootWindow.height * 0.075))
+                    radius: 8
+                    color: "#00281e"
+                    border.color: "#4A9782"
+                    border.width: 1
 
-                    Image {
-                        anchors.fill: parent
-                        anchors.margins: 6 // Tạo khoảng đệm nhỏ để logo không chạm sát viền khung
-                        source: "assets/full_size_logo_fce.png"
-                        
-                        // Giữ nguyên tỉ lệ khung hình gốc của logo, không làm méo ảnh
-                        fillMode: Image.PreserveAspectFit 
-                        
-                        // Làm mịn điểm ảnh khi thu nhỏ từ ảnh độ phân giải cao
-                        smooth: true
-                        mipmap: true
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: 8
+                        Rectangle {
+                            width: 10
+                            height: 10
+                            radius: 5
+                            color: "#22c55e"
+                        }
+                        Text {
+                            text: "MFDS KIOSK"
+                            font.pixelSize: 14
+                            font.bold: true
+                            color: "#ffffff"
+                        }
                     }
                 }
 
-                // Tên Trường & Khoa
+                // Title & Subtitle
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 4
+                    spacing: 2
 
                     Text {
-                        text: "ĐẠI HỌC QUỐC GIA TP.HCM - TRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN"
-                        font.pixelSize: 14
-                        font.bold: true
-                        color: "#8d8d8d"
-                    }
-                    Text {
-                        text: "KHOA KỸ THUẬT MÁY TÍNH"
-                        font.pixelSize: 24
+                        text: (typeof dataManager !== "undefined" && dataManager.bannerTitle !== "")
+                              ? dataManager.bannerTitle : "HỆ THỐNG HIỂN THỊ ĐA CHỨC NĂNG (MFDS)"
+                        font.pixelSize: Math.max(16, Math.round(rootWindow.height * 0.026))
                         font.bold: true
                         color: "#ffffff"
+                        elide: Text.ElideRight
+                    }
+                    Text {
+                        text: "📍 " + ((typeof dataManager !== "undefined" && dataManager.location !== "")
+                                      ? dataManager.location : "Trung Tâm Điều Hành Hệ Thống") + 
+                              "  •  Node: " + ((typeof dataManager !== "undefined" && dataManager.deviceName !== "")
+                                      ? dataManager.deviceName : "MFDS-Display-01")
+                        font.pixelSize: 12
+                        color: "#C7E9D3"
+                        elide: Text.ElideRight
                     }
                 }
 
-                // Khối Thời tiết / Môi trường Khu đô thị ĐHQG
+                // Weather Widget (Open-Meteo REST API)
                 Rectangle {
-                    Layout.preferredWidth: 280
-                    Layout.preferredHeight: 68
-                    radius: 10
+                    Layout.preferredWidth: Math.max(220, Math.round(rootWindow.width * 0.18))
+                    Layout.preferredHeight: Math.max(52, Math.round(rootWindow.height * 0.08))
+                    radius: 8
                     color: "#00281e"
                     border.color: "#4A9782"
                     border.width: 1
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 12
+                        anchors.margins: 8
+                        spacing: 8
 
                         Text {
                             text: (typeof weatherManager !== "undefined") ? weatherManager.weatherIcon : "🌤️"
-                            font.pixelSize: 32
+                            font.pixelSize: 26
                         }
                         ColumnLayout {
-                            spacing: 2
+                            spacing: 1
                             Text {
-                                text: (typeof weatherManager !== "undefined") ? weatherManager.weatherText : "31°C | Độ ẩm: 68%"
-                                font.pixelSize: 17
+                                text: (typeof weatherManager !== "undefined") ? weatherManager.weatherText : "28.5°C | Độ ẩm: 65%"
+                                font.pixelSize: 13
                                 font.bold: true
                                 color: "#ffffff"
                             }
                             Text {
-                                text: "Khu đô thị ĐHQG-HCM" + ((typeof weatherManager !== "undefined" && weatherManager.weatherDescription !== "") ? (" • " + weatherManager.weatherDescription) : "")
-                                font.pixelSize: 12
+                                text: "Thời tiết thực tế" + ((typeof weatherManager !== "undefined" && weatherManager.weatherDescription !== "") ? (" • " + weatherManager.weatherDescription) : "")
+                                font.pixelSize: 10
                                 color: "#C7E9D3"
+                                elide: Text.ElideRight
                             }
                         }
                     }
                 }
 
-                // Đồng hồ thời gian thực
+                // Digital Clock Widget (Synced with Vietnam Time UTC+7)
                 ClockWidget {
-                    Layout.preferredWidth: 240
-                    Layout.preferredHeight: 70
+                    Layout.preferredWidth: 220
+                    Layout.preferredHeight: Math.max(52, Math.round(rootWindow.height * 0.08))
                 }
             }
         }
 
-        // ==================== 2. KHU VỰC NỘI DUNG CHÍNH ====================
+        // ====================================================================
+        // 2. MAIN BODY SECTION (Left: Notices & Org, Right: Daily Schedule & Telemetry)
+        // ====================================================================
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 16
+            spacing: 14
 
-            // --------- CỘT TRÁI (62%): TỔ CHỨC KHOA & THÔNG BÁO MỚI NHẤT ---------
+            // --------- CỘT TRÁI (60%): ĐƠN VỊ VẬN HÀNH & THÔNG BÁO ---------
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.preferredWidth: 62
-                spacing: 16
+                Layout.preferredWidth: Math.round(rootWindow.width * 0.60)
+                spacing: 12
 
-                // Khối 1: Thông tin Ban Chủ nhiệm & Văn phòng Khoa
+                // Khối 1: Thông tin Trực ban Điều hành (Ẩn danh, chuẩn hóa kỹ thuật)
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 165
+                    Layout.preferredHeight: Math.max(88, Math.round(rootWindow.height * 0.15))
                     color: "#C7E9D3"
-                    radius: 12
+                    radius: 10
                     border.color: "#FFFFFF"
                     border.width: 1
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 18
-                        spacing: 12
+                        anchors.margins: 10
+                        spacing: 6
 
                         RowLayout {
                             Layout.fillWidth: true
                             Text {
-                                text: "🏛️ THÔNG TIN ĐƠN VỊ & BAN CHỦ NHIỆM KHOA"
-                                font.pixelSize: 17
+                                text: "🏛️ ĐƠN VỊ VẬN HÀNH & GIÁM SÁT HỆ THỐNG"
+                                font.pixelSize: 13
                                 font.bold: true
                                 color: "#004030"
                                 Layout.fillWidth: true
                             }
                             Text {
-                                text: "🌐 Website: fce.uit.edu.vn"
-                                font.pixelSize: 14
+                                text: "Node ID: BCM2711-KMS"
+                                font.pixelSize: 11
                                 font.bold: true
-                                color: "#8d8d8d"
+                                color: "#4A9782"
                             }
                         }
 
                         RowLayout {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            spacing: 14
+                            spacing: 8
 
-                            // Thẻ Trưởng khoa
+                            // Thẻ 1: Trực ban
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                radius: 8
+                                radius: 6
                                 color: "#ffffff"
-
                                 ColumnLayout {
                                     anchors.fill: parent
-                                    anchors.margins: 12
-                                    spacing: 4
-                                    Text {
-                                        text: "TRƯỞNG KHOA"
-                                        font.pixelSize: 12
-                                        font.bold: true
-                                        color: "#003427"
-                                    }
-                                    Text {
-                                        text: "TS. Nguyễn Minh Sơn"
-                                        font.pixelSize: 20
-                                        font.bold: true
-                                        color: "#004030"
-                                    }
-                                    Text {
-                                        text: "Phụ trách chung & Đào tạo, Khoa học Công nghệ"
-                                        font.pixelSize: 13
-                                        color: "#8d8d8d"
-                                        elide: Text.ElideRight
-                                        Layout.fillWidth: true
-                                    }
+                                    anchors.margins: 8
+                                    spacing: 2
+                                    Text { text: "TRỰC BAN VẬN HÀNH"; font.pixelSize: 10; font.bold: true; color: "#003427" }
+                                    Text { text: "Kỹ sư Trực ban"; font.pixelSize: 14; font.bold: true; color: "#004030" }
+                                    Text { text: "Giám sát luồng IPC & Watchdog 24/7"; font.pixelSize: 10; color: "#64748b"; elide: Text.ElideRight; Layout.fillWidth: true }
                                 }
                             }
 
-                            // Thẻ Phó Trưởng khoa
+                            // Thẻ 2: Ban Kỹ thuật
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                radius: 8
+                                radius: 6
                                 color: "#ffffff"
-
                                 ColumnLayout {
                                     anchors.fill: parent
-                                    anchors.margins: 12
-                                    spacing: 4
-                                    Text {
-                                        text: "PHÓ TRƯỞNG KHOA"
-                                        font.pixelSize: 12
-                                        font.bold: true
-                                        color: "#003427"
-                                    }
-                                    Text {
-                                        text: "ThS. Phan Đình Duy"
-                                        font.pixelSize: 20
-                                        font.bold: true
-                                        color: "#004030"
-                                    }
-                                    Text {
-                                        text: "Danh hiệu Giảng viên của năm ĐHQG-HCM 2025"
-                                        font.pixelSize: 13
-                                        color: "#ff7b00"
-                                        elide: Text.ElideRight
-                                        Layout.fillWidth: true
-                                    }
+                                    anchors.margins: 8
+                                    spacing: 2
+                                    Text { text: "BAN KỸ THUẬT HỆ THỐNG"; font.pixelSize: 10; font.bold: true; color: "#003427" }
+                                    Text { text: "Trung Tâm Điều Hành"; font.pixelSize: 14; font.bold: true; color: "#004030" }
+                                    Text { text: "Hệ điều hành nhúng Yocto Linux"; font.pixelSize: 10; color: "#0284c7"; elide: Text.ElideRight; Layout.fillWidth: true }
                                 }
                             }
 
-                            // Thẻ Văn phòng Khoa
+                            // Thẻ 3: Trạm Kiosk
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                radius: 8
+                                radius: 6
                                 color: "#ffffff"
-
                                 ColumnLayout {
                                     anchors.fill: parent
-                                    anchors.margins: 12
-                                    spacing: 4
-                                    Text {
-                                        text: "VĂN PHÒNG KHOA"
-                                        font.pixelSize: 12
-                                        font.bold: true
-                                        color: "#22c55e"
-                                    }
-                                    Text {
-                                        text: "Phòng E6.2 - Tòa nhà E"
-                                        font.pixelSize: 19
-                                        font.bold: true
-                                        color: "#004030"
-                                    }
-                                    Text {
-                                        text: "Giờ tiếp SV: 08:00 - 11:30 & 13:30 - 16:30"
-                                        font.pixelSize: 13
-                                        color: "#8d8d8d"
-                                        elide: Text.ElideRight
-                                        Layout.fillWidth: true
-                                    }
+                                    anchors.margins: 8
+                                    spacing: 2
+                                    Text { text: "TRẠM HIỂN THỊ MFDS"; font.pixelSize: 10; font.bold: true; color: "#16a34a" }
+                                    Text { text: "Phòng LAB Đo Kiểm"; font.pixelSize: 14; font.bold: true; color: "#004030" }
+                                    Text { text: "Tần số: 60 FPS • EGLFS KMS"; font.pixelSize: 10; color: "#64748b"; elide: Text.ElideRight; Layout.fillWidth: true }
                                 }
                             }
                         }
                     }
                 }
 
-                // Khối 2: Danh sách Thông báo mới nhất từ RSS fce.uit.edu.vn
+                // Khối 2: Danh sách Thông báo Hệ thống (model từ dataManager.notices)
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     color: "#C7E9D3"
-                    radius: 12
+                    radius: 10
                     border.color: "#FFFFFF"
                     border.width: 1
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 18
-                        spacing: 12
+                        anchors.margins: 10
+                        spacing: 8
 
                         RowLayout {
                             Layout.fillWidth: true
                             Text {
-                                text: "📢 THÔNG BÁO & SỰ KIỆN MỚI NHẤT"
-                                font.pixelSize: 17
+                                text: "📢 BẢNG THÔNG BÁO VẬN HÀNH"
+                                font.pixelSize: 13
                                 font.bold: true
                                 color: "#004030"
                                 Layout.fillWidth: true
                             }
+                            Text {
+                                text: (dataManager.notices ? dataManager.notices.length : 0) + " bản tin"
+                                font.pixelSize: 11
+                                color: "#4A9782"
+                            }
                         }
 
                         ListView {
-                            id: rssListView
+                            id: noticeListView
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
-                            spacing: 10
-                            model: (typeof newsManager !== "undefined") ? newsManager.newsItems : []
+                            spacing: 6
+                            model: dataManager.notices
 
                             delegate: Rectangle {
-                                width: rssListView.width
-                                height: 74
-                                radius: 8
+                                width: noticeListView.width
+                                height: 58
+                                radius: 6
                                 color: "#ffffff"
 
                                 RowLayout {
                                     anchors.fill: parent
-                                    anchors.margins: 14
-                                    spacing: 14
+                                    anchors.margins: 8
+                                    spacing: 10
 
-                                    // Nhãn phân loại (SEMINAR / HỌC VỤ / THÔNG BÁO)
+                                    // Nhãn phân loại không có chữ khẩn cấp
                                     Rectangle {
-                                        Layout.preferredWidth: 105
-                                        Layout.preferredHeight: 34
-                                        radius: 6
-                                        color: modelData.category === "SEMINAR" ? "#4A9782" :
-                                               (modelData.category === "HỌC VỤ" ? "#FF7B00" : "#004030")
-
+                                        Layout.preferredWidth: 82
+                                        Layout.preferredHeight: 24
+                                        radius: 4
+                                        color: modelData.priority === "update" ? "#4A9782" :
+                                               (modelData.priority === "info" ? "#0284c7" : "#004030")
                                         Text {
                                             anchors.centerIn: parent
-                                            text: modelData.category
-                                            font.pixelSize: 13
+                                            text: modelData.priority === "update" ? "CẬP NHẬT" :
+                                                 (modelData.priority === "info" ? "TIN MỚI" : "THÔNG BÁO")
+                                            font.pixelSize: 10
                                             font.bold: true
                                             color: "white"
                                         }
                                     }
 
-                                    // Tiêu đề thông báo
-                                    Text {
+                                    // Tiêu đề & trích đoạn
+                                    ColumnLayout {
                                         Layout.fillWidth: true
-                                        text: modelData.title
-                                        font.pixelSize: 16
-                                        font.bold: true
-                                        color: "#004030"
-                                        wrapMode: Text.WordWrap
-                                        maximumLineCount: 2
-                                        elide: Text.ElideRight
+                                        spacing: 1
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: modelData.title ? modelData.title : ""
+                                            font.pixelSize: 13
+                                            font.bold: true
+                                            color: "#004030"
+                                            elide: Text.ElideRight
+                                        }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: modelData.content ? modelData.content : ""
+                                            font.pixelSize: 10
+                                            color: "#64748b"
+                                            elide: Text.ElideRight
+                                            maximumLineCount: 1
+                                        }
                                     }
 
                                     // Ngày đăng
                                     Text {
-                                        text: "📅 " + modelData.date
-                                        font.pixelSize: 13
-                                        color: "#8d8d8d"
+                                        text: "📅 " + (modelData.date ? modelData.date : "")
+                                        font.pixelSize: 10
+                                        color: "#64748b"
                                     }
                                 }
                             }
@@ -416,71 +370,71 @@ Window {
                 }
             }
 
-            // --------- CỘT PHẢI (38%): LỊCH TRONG NGÀY & TRẠM IOT ---------
+            // --------- CỘT PHẢI (40%): LỊCH TRÌNH VẬN HÀNH & GIÁM SÁT ---------
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.preferredWidth: 38
-                spacing: 16
+                Layout.preferredWidth: Math.round(rootWindow.width * 0.40)
+                spacing: 12
 
-                // Khối 1: Lịch công tác & Sự kiện trong ngày
+                // Khối 1: Lịch hoạt động trong ngày (model từ dataManager.schedules)
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    color: "#c7e9d3"
-                    radius: 12
-                    border.color: "#ffffff"
+                    color: "#C7E9D3"
+                    radius: 10
+                    border.color: "#FFFFFF"
                     border.width: 1
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 18
-                        spacing: 12
+                        anchors.margins: 10
+                        spacing: 8
 
                         Text {
-                            text: "🗓️ LỊCH HOẠT ĐỘNG & SỰ KIỆN TRONG NGÀY"
-                            font.pixelSize: 17
+                            text: "🗓️ LỊCH HOẠT ĐỘNG VẬN HÀNH TRONG NGÀY"
+                            font.pixelSize: 13
                             font.bold: true
                             color: "#004030"
                         }
 
                         ListView {
-                            id: scheduleListView
+                            id: schedListView
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
-                            spacing: 10
-                            model: scheduleModel
+                            spacing: 6
+                            model: dataManager.schedules
 
                             delegate: Rectangle {
-                                width: scheduleListView.width
-                                height: 86
-                                radius: 8
+                                width: schedListView.width
+                                height: 56
+                                radius: 6
                                 color: "#ffffff"
 
                                 ColumnLayout {
                                     anchors.fill: parent
-                                    anchors.margins: 12
-                                    spacing: 6
+                                    anchors.margins: 8
+                                    spacing: 2
 
                                     RowLayout {
                                         Layout.fillWidth: true
                                         Text {
-                                            text: "⏰ " + model.time
-                                            font.pixelSize: 14
+                                            text: "⏰ " + (modelData.time_slot ? modelData.time_slot : "")
+                                            font.pixelSize: 11
                                             font.bold: true
                                             color: "#004030"
                                             Layout.fillWidth: true
                                         }
                                         Rectangle {
-                                            width: 115
-                                            height: 24
-                                            radius: 4
-                                            color: rootWindow.getScheduleColor(model.startHour, model.endHour)
+                                            width: 88
+                                            height: 18
+                                            radius: 3
+                                            color: rootWindow.getScheduleColor(modelData.time_slot)
                                             Text {
                                                 anchors.centerIn: parent
-                                                text: rootWindow.getScheduleStatus(model.startHour, model.endHour)
-                                                font.pixelSize: 11
+                                                text: rootWindow.getScheduleStatus(modelData.time_slot)
+                                                font.pixelSize: 9
                                                 font.bold: true
                                                 color: "white"
                                             }
@@ -489,17 +443,18 @@ Window {
 
                                     Text {
                                         Layout.fillWidth: true
-                                        text: model.title
-                                        font.pixelSize: 15
+                                        text: modelData.event_name ? modelData.event_name : ""
+                                        font.pixelSize: 12
                                         font.bold: true
                                         color: "#004030"
                                         elide: Text.ElideRight
                                     }
 
                                     Text {
-                                        text: "📍 " + model.location
-                                        font.pixelSize: 13
-                                        color: "#8d8d8d"
+                                        text: "📍 " + (modelData.room ? modelData.room : "") + "  •  👤 " + (modelData.host ? modelData.host : "")
+                                        font.pixelSize: 10
+                                        color: "#64748b"
+                                        elide: Text.ElideRight
                                     }
                                 }
                             }
@@ -507,107 +462,85 @@ Window {
                     }
                 }
 
-                // Khối 2: Giám sát Node Nhúng & Bộ môn Chuyên ngành
+                // Khối 2: Thông số Trạm Kiosk & Watchdog
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 190
-                    color: "#c7e9d3"
-                    radius: 12
-                    border.color: "#ffffff"
+                    Layout.preferredHeight: Math.max(90, Math.round(rootWindow.height * 0.16))
+                    color: "#C7E9D3"
+                    radius: 10
+                    border.color: "#FFFFFF"
                     border.width: 1
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 18
-                        spacing: 10
+                        anchors.margins: 10
+                        spacing: 6
 
                         Text {
-                            text: "⚙️ CÁC BỘ MÔN CHUYÊN NGÀNH & TRẠNG THÁI TRẠM HIỂN THỊ"
-                            font.pixelSize: 16
+                            text: "⚙️ THÔNG SỐ VẬN HÀNH & WATCHDOG TRẠM"
+                            font.pixelSize: 12
                             font.bold: true
                             color: "#004030"
                         }
 
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 10
+                            spacing: 8
 
                             Rectangle {
                                 Layout.fillWidth: true
-                                height: 54
-                                radius: 8
+                                height: 38
+                                radius: 6
                                 color: "#ffffff"
                                 ColumnLayout {
                                     anchors.centerIn: parent
-                                    spacing: 2
-                                    Text {
-                                        text: "Hệ thống Nhúng & IoT"
-                                        font.pixelSize: 14
-                                        font.bold: true
-                                        color: "#e7b019"
-                                        Layout.alignment: Qt.AlignHCenter
-                                    }
-                                    Text {
-                                        text: "Embedded Systems & IoT"
-                                        font.pixelSize: 12
-                                        color: "#8d8d8d"
-                                        Layout.alignment: Qt.AlignHCenter
-                                    }
+                                    spacing: 1
+                                    Text { text: "Hệ điều hành Nhúng"; font.pixelSize: 11; font.bold: true; color: "#004030"; Layout.alignment: Qt.AlignHCenter }
+                                    Text { text: "Yocto Linux 5.0 (ARM64)"; font.pixelSize: 9; color: "#64748b"; Layout.alignment: Qt.AlignHCenter }
                                 }
                             }
 
                             Rectangle {
                                 Layout.fillWidth: true
-                                height: 54
-                                radius: 8
+                                height: 38
+                                radius: 6
                                 color: "#ffffff"
                                 ColumnLayout {
                                     anchors.centerIn: parent
-                                    spacing: 2
-                                    Text {
-                                        text: "Thiết kế Vi mạch"
-                                        font.pixelSize: 14
-                                        font.bold: true
-                                        color: "#047519"
-                                        Layout.alignment: Qt.AlignHCenter
-                                    }
-                                    Text {
-                                        text: "IC Design & Hardware"
-                                        font.pixelSize: 12
-                                        color: "#8d8d8d"
-                                        Layout.alignment: Qt.AlignHCenter
-                                    }
+                                    spacing: 1
+                                    Text { text: "Đồ họa Hiệu năng Cao"; font.pixelSize: 11; font.bold: true; color: "#16a34a"; Layout.alignment: Qt.AlignHCenter }
+                                    Text { text: "Qt 6.8 EGLFS Direct VC4"; font.pixelSize: 9; color: "#64748b"; Layout.alignment: Qt.AlignHCenter }
                                 }
                             }
                         }
 
-                        // Dòng thông số kỹ thuật của Box nhúng
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            radius: 8
+                            radius: 6
                             color: "#ffffff"
 
                             RowLayout {
                                 anchors.fill: parent
-                                anchors.leftMargin: 14
-                                anchors.rightMargin: 14
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 10
 
                                 Text {
-                                    text: "🟢 Trạng thái Kiosk: Online"
-                                    font.pixelSize: 13
-                                    color: "#22c55e"
+                                    text: "🟢 Watchdog: Armed (15s)"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                    color: "#16a34a"
                                     Layout.fillWidth: true
                                 }
                                 Text {
-                                    text: "🌡️ Nhiệt độ sảnh E6: 26.5°C"
-                                    font.pixelSize: 13
-                                    color: "#8d8d8d"
+                                    text: "🔄 IPC: Inotify Active"
+                                    font.pixelSize: 11
+                                    color: "#0284c7"
                                     Layout.fillWidth: true
                                 }
                                 Text {
-                                    text: "🔄 Tự động cập nhật: 60 giây"
-                                    font.pixelSize: 13
+                                    text: "🖥️ HDMI-A-2 Direct"
+                                    font.pixelSize: 11
                                     color: "#4A9782"
                                 }
                             }
@@ -617,10 +550,12 @@ Window {
             }
         }
 
-        // ==================== 3. KHU VỰC FOOTER (CHỮ CHẠY) ====================
+        // ====================================================================
+        // 3. FOOTER SECTION (Marquee News Banner)
+        // ====================================================================
         NewsBanner {
             Layout.fillWidth: true
-            Layout.preferredHeight: 60
+            Layout.preferredHeight: Math.max(40, Math.round(rootWindow.height * 0.065))
         }
     }
 }

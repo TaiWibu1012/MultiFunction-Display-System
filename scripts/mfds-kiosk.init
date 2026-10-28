@@ -13,7 +13,8 @@ DAEMON_DIR="/home/root/mfds"
 PIDFILE="/var/run/mfds-kiosk.pid"
 LOGFILE="/var/log/mfds-kiosk.log"
 
-# EGLFS KMS/DRM Tuning per eglfs-kiosk-tuning skill
+# Timezone and EGLFS KMS/DRM Tuning per eglfs-kiosk-tuning skill
+export TZ="ICT-7"
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-eglfs}"
 export QT_QPA_EGLFS_FORCE888=1
 export QT_QPA_EGLFS_NO_LIBINPUT=0
