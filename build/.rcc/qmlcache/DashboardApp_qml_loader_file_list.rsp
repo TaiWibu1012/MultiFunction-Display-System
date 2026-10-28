@@ -1,9 +1,0 @@
---resource
-/home/dung/DisplayBox_Project/build/.qt/rcc/qmake_DashboardUI.qrc
---resource
-/home/dung/DisplayBox_Project/build/.qt/rcc/DashboardApp_raw_qml_0.qrc
---resource
-/home/dung/DisplayBox_Project/build/.qt/rcc/DashboardApp_raw_res_0.qrc
-/DashboardUI/src/app/Main.qml
-/DashboardUI/src/app/components/ClockWidget.qml
-/DashboardUI/src/app/components/NewsBanner.qml

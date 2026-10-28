@@ -1,8 +1,0 @@
-module DashboardUI
-typeinfo DashboardApp.qmltypes
-prefer :/DashboardUI/
-Main 1.0 src/app/Main.qml
-ClockWidget 1.0 src/app/components/ClockWidget.qml
-NewsBanner 1.0 src/app/components/NewsBanner.qml
-depends QtQuick
-
